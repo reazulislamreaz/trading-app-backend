@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { configs } from "../configs";
+
 type TMailContent = {
   to: string;
   subject: string;
@@ -8,21 +9,41 @@ type TMailContent = {
   name?: string;
 };
 
+// Create transporter with connection pool and timeout settings
 const transporter = nodemailer.createTransport({
-  //   host: "smtp.gmail.com",
-  host: "mail.betopiagroup.com",
-  port: 587,
-  secure: false, // true for 465, false for other ports
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true, // true for 465, false for other ports
   auth: {
     user: configs.email.app_email!,
     pass: configs.email.app_password!,
   },
+  connectionTimeout: 5000, // 5 second connection timeout
+  socketTimeout: 10000, // 10 second socket timeout
+  pool: true, // Enable connection pooling
+  maxConnections: 5, // Max 5 concurrent connections
+  maxMessages: 100, // Max messages per connection
 });
 
-// ✅ Email Sender Function
-const sendMail = async (payload: TMailContent) => {
-  const info = await transporter.sendMail({
-    from: process.env.SMTP_FROM_EMAIL || configs.email.app_email || "noreply@example.com",
+// Verify transporter connection on startup (non-blocking)
+transporter.verify((error, success) => {
+  if (error) {
+    console.warn("⚠️  Email transporter verification failed:", error.message);
+    console.warn("Emails will not be sent until connection is established.");
+  } else {
+    console.log("✅ Email transporter ready");
+  }
+});
+
+/**
+ * Send email with timeout and error handling
+ * @param payload - Email content
+ * @param blocking - If true, waits for completion (default: false)
+ */
+const sendMail = async (payload: TMailContent, blocking: boolean = false): Promise<void> => {
+  const sendPromise = transporter.sendMail({
+    from: "reazul.islam@sparktechagency.com",
+    // from:  process.env.SMTP_FROM_EMAIL || configs.email.app_email || "noreply@example.com",
     to: payload.to,
     subject: payload.subject,
     text: payload.textBody,
@@ -32,7 +53,7 @@ const sendMail = async (payload: TMailContent) => {
 
 <head>
     <meta charset="UTF-8">
-    <title>Welcome Email</title>
+    <title>${payload.subject}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         * {
@@ -41,22 +62,15 @@ const sendMail = async (payload: TMailContent) => {
             box-sizing: border-box;
         }
 
-        /* Fallback styles for unsupported clients (some email clients ignore <style> tags) */
         @media only screen and (max-width: 600px) {
             .container {
                 padding: 20px !important;
-            }
-
-            .btn {
-                padding: 12px 18px !important;
-                font-size: 16px !important;
             }
         }
     </style>
 </head>
 
-<body
-    style="margin: 0; padding: 0;  font-family: Arial, sans-serif;">
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif;">
 
     <div style="max-width: 600px; margin: 40px auto; background-color: #f4f4f4; padding: 40px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);"
         class="container">
@@ -66,17 +80,16 @@ const sendMail = async (payload: TMailContent) => {
 
             ${payload?.htmlBody}
 
-            <div
-                style=" margin-top: 60px; text-align: center;">
-                
-                    <img style="width: 50px; height: 50px; border-radius: 50%;"
-                        src="https://imgs.search.brave.com/IZoN38NQxnIIuB1I9E70bW6q5OvbEtz68YaxTe1j-o0/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9lbGVt/ZW50cy1yZXNpemVk/LmVudmF0b3VzZXJj/b250ZW50LmNvbS9l/bGVtZW50cy1jb3Zl/ci1pbWFnZXMvMjhi/NmVjMTQtMGMwOS00/NGY1LWE5NGUtNmIy/OTM5NTZkMDM2P3c9/NDMzJmNmX2ZpdD1z/Y2FsZS1kb3duJnE9/ODUmZm9ybWF0PWF1/dG8mcz04Mjc0OWYy/ZDUyMmJiM2NlMjNi/OWNhNjhlZmFhNjdk/MTg5OGI4NWIwNzBh/MjQ1NjM4NmI1ZmFj/NWVmNmM5ZTNl"
-                        alt="">
-               
+            <div style="margin-top: 60px; text-align: center;">
+                <img style="width: 50px; height: 50px; border-radius: 50%;"
+                    src="https://imgs.search.brave.com/IZoN38NQxnIIuB1I9E70bW6q5OvbEtz68YaxTe1j-o0/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9lbGVt/ZW50cy1yZXNpemVk/LmVudmF0b3VzZXJj/b250ZW50LmNvbS9l/bGVtZW50cy1jb3Zl/ci1pbWFnZXMvMjhi/NmVjMTQtMGMwOS00/NGY1LWE5NGUtNmIy/OTM5NTZkMDM2P3c9/NDMzJmNmX2ZpdD1z/Y2FsZS1kb3duJnE9/ODUmZm9ybWF0PWF1/dG8mcz04Mjc0OWYy/ZDUyMmJiM2NlMjNi/OWNhNjhlZmFhNjdk/MTg5OGI4NWIwNzBh/MjQ1NjM4NmI1ZmFj/NWVmNmM5ZTNl"
+                    alt="Company Logo">
+
                 <p style="font-size: 12px;">The Support Team</p>
                 <h3>Company Name</h3>
             </div>
         </div>
+        
         <p style="font-size: 14px; color: #999999; margin-top: 20px; margin-bottom: 10px; text-align: center;">
             This is an automated message — please do not reply to this email.
             <br>
@@ -87,17 +100,23 @@ const sendMail = async (payload: TMailContent) => {
 
         <hr>
         <div style="text-align: center; font-size: 12px; color: #999999; margin-top: 20px;">
-            &copy; {{year}} Your Company. All rights reserved.
+            &copy; ${new Date().getFullYear()} Your Company. All rights reserved.
         </div>
 
     </div>
 </body>
-
 </html>
-        
         `,
   });
-  return info;
+
+  if (blocking) {
+    await sendPromise;
+  } else {
+    // Non-blocking: send in background with error logging
+    sendPromise.catch(err => {
+      console.error(`❌ Email failed to send to ${payload.to}:`, err.message);
+    });
+  }
 };
 
 export default sendMail;

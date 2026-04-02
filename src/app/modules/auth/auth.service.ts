@@ -125,16 +125,15 @@ const register_user_into_db = async (
       { verificationCode, verificationCodeExpires }
     );
 
-    // Send verification email
-    await sendMail({
+    // Send verification email (non-blocking)
+    sendMail({
       to: payload.email,
       subject: 'Verify Your Email',
       textBody: 'Your email verification code',
       name: payload.name,
       htmlBody: `
-        <p>Hi ${payload.name},</p>
         <p>Thanks for creating an account with us! Please use the following code to verify your email:</p>
-        <h2 style="text-align: center; color: #4CAF50;">${verificationCode}</h2>
+        <h2 style="text-align: center; color: #4CAF50; font-size: 32px; margin: 20px 0;">${verificationCode}</h2>
         <p>This code will expire in 10 minutes.</p>
         <p>If you didn't create this account, please ignore this email.</p>
       `,
@@ -324,14 +323,14 @@ const forget_password_from_db = async (email: string): Promise<string> => {
     resetPasswordExpire: expiresAt,
   });
 
-  await sendMail({
+  // Send password reset email (non-blocking)
+  sendMail({
     to: email,
     subject: 'Password Reset Request',
     textBody: 'Your password reset code',
     htmlBody: `
-      <p>Hello,</p>
       <p>You requested a password reset. Use the following code to reset your password:</p>
-      <h2 style="text-align: center; color: #4CAF50;">${otp}</h2>
+      <h2 style="text-align: center; color: #4CAF50; font-size: 32px; margin: 20px 0;">${otp}</h2>
       <p>This code will expire in 10 minutes.</p>
       <p>If you didn't request this, please ignore this email.</p>
     `,
@@ -440,14 +439,14 @@ const resend_verification_email_from_db = async (email: string): Promise<string>
     { verificationCode, verificationCodeExpires }
   );
 
-  await sendMail({
+  // Send verification email (non-blocking)
+  sendMail({
     to: email,
     subject: 'Verify Your Email',
     textBody: 'Your email verification code',
     htmlBody: `
-      <p>Hi,</p>
       <p>Your new verification code is:</p>
-      <h2 style="text-align: center; color: #4CAF50;">${verificationCode}</h2>
+      <h2 style="text-align: center; color: #4CAF50; font-size: 32px; margin: 20px 0;">${verificationCode}</h2>
       <p>This code will expire in 10 minutes.</p>
     `,
   });

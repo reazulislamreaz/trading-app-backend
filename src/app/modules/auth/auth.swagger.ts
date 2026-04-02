@@ -3,7 +3,7 @@ export const authSwaggerDocs = {
     post: {
       tags: ["Authentication"],
       summary: "Register a new user",
-      description: "Create a new user account. Sends verification email with OTP. Default role is USER.",
+      description: "Create a new user account with email verification. **Note:** Verification email is sent asynchronously (non-blocking) for fast registration. Default role is USER.",
       requestBody: {
         required: true,
         content: {
@@ -49,7 +49,9 @@ export const authSwaggerDocs = {
                         name: { type: "string", example: "John Doe" },
                         email: { type: "string", example: "user@example.com" },
                         role: { type: "string", example: "USER" },
-                        isVerified: { type: "boolean", example: false },
+                        isVerified: { type: "boolean", example: false, description: "false until email is verified" },
+                        createdAt: { type: "string", format: "date-time" },
+                        updatedAt: { type: "string", format: "date-time" },
                       },
                     },
                   },
@@ -67,7 +69,7 @@ export const authSwaggerDocs = {
     post: {
       tags: ["Authentication"],
       summary: "Login user",
-      description: "Authenticate with email and password. If 2FA is enabled, provide twoFactorCode.",
+      description: "Authenticate with email and password. **Note:** The `twoFactorCode` field is ONLY required if 2FA is enabled on the account. For normal login, just provide email and password.",
       requestBody: {
         required: true,
         content: {
@@ -78,7 +80,12 @@ export const authSwaggerDocs = {
               properties: {
                 email: { type: "string", format: "email", example: "user@example.com" },
                 password: { type: "string", example: "SecurePass123!" },
-                twoFactorCode: { type: "string", pattern: "^\\d{6}$", example: "123456" },
+                twoFactorCode: { 
+                  type: "string", 
+                  pattern: "^\\d{6}$", 
+                  example: "123456",
+                  description: "Optional: Only required if 2FA is enabled on your account"
+                },
               },
             },
           },
@@ -100,7 +107,7 @@ export const authSwaggerDocs = {
                       accessToken: { type: "string", example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." },
                       refreshToken: { type: "string", example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." },
                       role: { type: "string", enum: ["USER", "ADMIN", "MASTER"], example: "USER" },
-                      requiresTwoFactor: { type: "boolean", example: false },
+                      requiresTwoFactor: { type: "boolean", example: false, description: "true if 2FA is enabled" },
                     },
                   },
                 },
@@ -234,7 +241,7 @@ export const authSwaggerDocs = {
     post: {
       tags: ["Authentication"],
       summary: "Request password reset",
-      description: "Sends OTP to email for password reset. Rate limited to 3 requests per hour.",
+      description: "Sends OTP to email for password reset. Rate limited to 3 requests per hour. **Note:** Email is sent asynchronously (non-blocking).",
       requestBody: {
         required: true,
         content: {
