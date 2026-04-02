@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//home/reaz/Documents/nano-devs/projects/deal/deal-backend/src/app/modules/user/**)",
+      "Read(//home/reaz/Documents/nano-devs/projects/deal/deal-backend/src/app/modules/upload/**)",
+      "Read(//home/reaz/Documents/nano-devs/projects/deal/deal-backend/src/app/utils/**)",
+      "Read(//home/reaz/Documents/nano-devs/projects/deal/deal-backend/src/app/errors/**)",
+      "Read(//home/reaz/Documents/nano-devs/projects/deal/deal-backend/src/app/types/**)"
+    ]
+  },
+  "$version": 3
+}

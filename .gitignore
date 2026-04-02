@@ -1,0 +1,45 @@
+.env
+.env.local
+.env.production
+node_modules/
+dist/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Backup files
+backups/
+*.bak
+*.backup
+
+# Secrets (never commit these)
+*.pem
+*.key
+*.crt
+secrets/

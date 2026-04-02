@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongo:
+    image: mongo:7
+    container_name: myapp_mongo
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-secure_password_change_me}
+    volumes:
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+    networks:
+      - myapp_network
+    ports:
+      - "127.0.0.1:27017:27017"  # Only accessible from localhost
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  # Application
+  app:
+    build: .
+    container_name: myapp_api
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - DB_URL=mongodb://${MONGO_USERNAME:-appuser}:${MONGO_PASSWORD:-app_password_change_me}@mongo:27017/${MONGO_DATABASE:-myapp}?authSource=admin
+      - ACCESS_TOKEN=${ACCESS_TOKEN}
+      - REFRESH_TOKEN=${REFRESH_TOKEN}
+      - RESET_SECRET=${RESET_SECRET}
+      - VERIFIED_TOKEN=${VERIFIED_TOKEN}
+      - ACCESS_EXPIRES=${ACCESS_EXPIRES:-15m}
+      - REFRESH_EXPIRES=${REFRESH_EXPIRES:-7d}
+      - RESET_EXPIRES=${RESET_EXPIRES:-10m}
+      - FRONT_END_URL=${FRONT_END_URL:-http://localhost:3000}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000}
+      - BCRYPT_SALT_ROUNDS=${BCRYPT_SALT_ROUNDS:-12}
+      - APP_USER_EMAIL=${APP_USER_EMAIL}
+      - APP_PASSWORD=${APP_PASSWORD}
+      - CLOUD_NAME=${CLOUD_NAME}
+      - CLOUD_API_KEY=${CLOUD_API_KEY}
+      - CLOUD_API_SECRET=${CLOUD_API_SECRET}
+    ports:
+      - "5000:5000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - myapp_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Nginx Reverse Proxy (Optional - uncomment if you want HTTPS)
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: myapp_nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./nginx/ssl:/etc/nginx/ssl:ro
+  #     - ./nginx/conf.d:/etc/nginx/conf.d:ro
+  #     - certbot_data:/var/www/certbot
+  #   depends_on:
+  #     - app
+  #   networks:
+  #     - myapp_network
+
+volumes:
+  mongo_data:
+    driver: local
+  mongo_config:
+    driver: local
+  # certbot_data:
+  #   driver: local
+
+networks:
+  myapp_network:
+    driver: bridge
