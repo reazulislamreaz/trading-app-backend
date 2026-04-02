@@ -5,7 +5,8 @@
       "Read(//home/reaz/Documents/nano-devs/projects/deal/deal-backend/src/app/modules/upload/**)",
       "Read(//home/reaz/Documents/nano-devs/projects/deal/deal-backend/src/app/utils/**)",
       "Read(//home/reaz/Documents/nano-devs/projects/deal/deal-backend/src/app/errors/**)",
-      "Read(//home/reaz/Documents/nano-devs/projects/deal/deal-backend/src/app/types/**)"
+      "Read(//home/reaz/Documents/nano-devs/projects/deal/deal-backend/src/app/types/**)",
+      "Bash(npm run *)"
     ]
   },
   "$version": 3

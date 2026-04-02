@@ -97,9 +97,9 @@ export const authSwaggerDocs = {
                   data: {
                     type: "object",
                     properties: {
-                      accessToken: { type: "string" },
-                      refreshToken: { type: "string" },
-                      role: { type: "string", example: "USER" },
+                      accessToken: { type: "string", example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." },
+                      refreshToken: { type: "string", example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." },
+                      role: { type: "string", enum: ["USER", "ADMIN", "MASTER"], example: "USER" },
                       requiresTwoFactor: { type: "boolean", example: false },
                     },
                   },
@@ -118,10 +118,45 @@ export const authSwaggerDocs = {
     get: {
       tags: ["Authentication"],
       summary: "Get current user profile",
+      description: "Retrieve the authenticated user's account information. Requires valid JWT token.",
       security: [{ bearerAuth: [] }],
       responses: {
-        200: { description: "Profile data retrieved successfully" },
-        401: { description: "Unauthorized" },
+        200: {
+          description: "Profile data retrieved successfully",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  success: { type: "boolean", example: true },
+                  message: { type: "string", example: "Profile fetched successfully" },
+                  data: {
+                    type: "object",
+                    properties: {
+                      account: {
+                        type: "object",
+                        properties: {
+                          _id: { type: "string", example: "65f1234567890abcdef12345" },
+                          name: { type: "string", example: "John Doe" },
+                          email: { type: "string", example: "user@example.com" },
+                          role: { type: "string", enum: ["USER", "ADMIN", "MASTER"], example: "USER" },
+                          isVerified: { type: "boolean", example: true },
+                          accountStatus: { type: "string", example: "ACTIVE" },
+                          twoFactorEnabled: { type: "boolean", example: false },
+                          createdAt: { type: "string", format: "date-time" },
+                          updatedAt: { type: "string", format: "date-time" },
+                        },
+                      },
+                      profile: { type: "object", nullable: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        401: { description: "Unauthorized - Invalid or missing JWT token" },
+        404: { description: "Account not found" },
       },
     },
   },
@@ -327,7 +362,28 @@ export const authSwaggerDocs = {
         },
       },
       responses: {
-        200: { description: "Login successful with backup code" },
+        200: {
+          description: "Login successful with backup code",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  success: { type: "boolean", example: true },
+                  message: { type: "string", example: "Login successful with backup code" },
+                  data: {
+                    type: "object",
+                    properties: {
+                      accessToken: { type: "string" },
+                      refreshToken: { type: "string" },
+                      role: { type: "string", enum: ["USER", "ADMIN", "MASTER"], example: "USER" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
         400: { description: "2FA not enabled for this account" },
         401: { description: "Invalid backup code" },
       },

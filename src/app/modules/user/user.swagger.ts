@@ -4,7 +4,7 @@ export const userSwaggerDocs = {
             tags: ["User"],
             summary: "Update user profile",
             description:
-                "Updates the authenticated user's profile information, including optional profile image upload. Accessible by both ADMIN and USER roles.",
+                "Updates the authenticated user's profile information, including optional profile image upload. Accessible by ADMIN, MASTER, and USER roles.",
             security: [{ bearerAuth: [] }],
             requestBody: {
                 required: true,
@@ -55,7 +55,7 @@ export const userSwaggerDocs = {
                                                 type: "string",
                                                 example: "/uploads/users/profile_64b2e1b9.png",
                                             },
-                                            role: { type: "string", example: "USER" },
+                                            role: { type: "string", enum: ["USER", "ADMIN", "MASTER"], example: "USER" },
                                             updatedAt: {
                                                 type: "string",
                                                 example: "2025-10-10T10:00:00Z",
@@ -68,7 +68,7 @@ export const userSwaggerDocs = {
                     },
                 },
                 400: { description: "Bad Request — Validation failed or invalid JSON format" },
-                401: { description: "Unauthorized — must be logged in as ADMIN or USER" },
+                401: { description: "Unauthorized — must be logged in as ADMIN, MASTER, or USER" },
             },
         },
     },
