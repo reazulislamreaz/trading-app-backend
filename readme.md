@@ -535,7 +535,8 @@ describe('Auth Tests', () => {
 
 - **[DEPLOYMENT.md](DEPLOYMENT.md)** - Complete deployment guide
 - **[QUICK_DEPLOY.md](QUICK_DEPLOY.md)** - 5-minute quick start
-- **[MONGODB_FIX_GUIDE.md](MONGODB_FIX_GUIDE.md)** - MongoDB troubleshooting
+- **[STRIPE_INTEGRATION_GUIDE.md](STRIPE_INTEGRATION_GUIDE.md)** - Complete Stripe integration guide
+- **[WEBHOOK_TESTING_GUIDE.md](WEBHOOK_TESTING_GUIDE.md)** - Webhook setup and testing
 
 ---
 

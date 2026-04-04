@@ -15,20 +15,20 @@ const webhookSecret = configs.stripe.webhookSecret;
 export const handleStripeWebhook = async (req: Request, res: Response) => {
   const sig = req.headers['stripe-signature'] as string;
 
-  let event: Stripe.Event;
+  let event: any;
 
   try {
     // Stripe requires raw body for webhook signature verification
     // The body should be a Buffer when using express.raw()
     const body = req.body instanceof Buffer ? req.body : Buffer.from(JSON.stringify(req.body));
-    
+
     event = stripe.webhooks.constructEvent(body, sig, webhookSecret!);
     logger.info(`📥 Webhook received: ${event.type} (ID: ${event.id})`);
   } catch (err: any) {
     logger.error(`❌ Webhook signature verification failed: ${err.message}`);
-    res.status(400).json({ 
+    res.status(400).json({
       error: 'Webhook signature verification failed',
-      message: err.message 
+      message: err.message
     });
     return;
   }
@@ -37,31 +37,31 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
   try {
     switch (event.type) {
       case 'checkout.session.completed':
-        await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
+        await handleCheckoutCompleted(event.data.object);
         break;
 
       case 'invoice.paid':
-        await handleInvoicePaid(event.data.object as Stripe.Invoice);
+        await handleInvoicePaid(event.data.object);
         break;
 
       case 'invoice.payment_failed':
-        await handleInvoiceFailed(event.data.object as Stripe.Invoice);
+        await handleInvoiceFailed(event.data.object);
         break;
 
       case 'customer.subscription.updated':
-        await handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
+        await handleSubscriptionUpdated(event.data.object);
         break;
 
       case 'customer.subscription.deleted':
-        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+        await handleSubscriptionDeleted(event.data.object);
         break;
 
       case 'payment_intent.succeeded':
-        await handlePaymentSucceeded(event.data.object as Stripe.PaymentIntent);
+        await handlePaymentSucceeded(event.data.object);
         break;
 
       case 'charge.refunded':
-        await handleChargeRefunded(event.data.object as Stripe.Charge);
+        await handleChargeRefunded(event.data.object);
         break;
 
       default:
@@ -71,9 +71,9 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
     res.json({ received: true });
   } catch (error: any) {
     logger.error(`❌ Error handling webhook event ${event.type}:`, error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Webhook handler failed',
-      message: error.message 
+      message: error.message
     });
   }
 };
@@ -86,7 +86,7 @@ async function handleCheckoutCompleted(session: any) {
     const subscriptionId = session.subscription as string;
 
     if (!accountId || !planId || !subscriptionId) {
-      console.error('❌ Missing metadata in checkout session:', { accountId, planId, subscriptionId });
+      logger.error('❌ Missing metadata in checkout session:', { accountId, planId, subscriptionId });
       return;
     }
 
@@ -104,6 +104,7 @@ async function handleCheckoutCompleted(session: any) {
         currentPeriodStart: new Date(stripeSubscription.current_period_start * 1000),
         currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
         trialEndsAt: stripeSubscription.trial_end ? new Date(stripeSubscription.trial_end * 1000) : null,
+        cancelAtPeriodEnd: false,
         autoRenew: true,
         nextBillingDate: new Date(stripeSubscription.current_period_end * 1000),
         signalsUsed: 0, // Reset usage for new subscription
@@ -119,9 +120,10 @@ async function handleCheckoutCompleted(session: any) {
       subscriptionExpiresAt: new Date(stripeSubscription.current_period_end * 1000),
     });
 
-    console.log(`✅ Subscription created for account: ${accountId}, plan: ${planId}`);
+    logger.info(`✅ Subscription created for account: ${accountId}, plan: ${planId}`);
   } catch (error) {
-    console.error('❌ Error in handleCheckoutCompleted:', error);
+    logger.error('❌ Error in handleCheckoutCompleted:', error);
+    throw error;
   }
 }
 
@@ -131,13 +133,13 @@ async function handleInvoicePaid(invoice: any) {
     const paymentIntentId = invoice.payment_intent as string;
 
     if (!subscriptionId) {
-      console.log('⚠️  No subscription ID in invoice');
+      logger.warn('⚠️  No subscription ID in invoice');
       return;
     }
 
     const subscription = await Subscription_Model.findOne({ stripeSubscriptionId: subscriptionId });
     if (!subscription) {
-      console.error('❌ Subscription not found for invoice:', subscriptionId);
+      logger.error('❌ Subscription not found for invoice:', subscriptionId);
       return;
     }
 
@@ -145,7 +147,7 @@ async function handleInvoicePaid(invoice: any) {
     await Payment_Model.create({
       accountId: subscription.accountId,
       subscriptionId: subscription._id,
-      stripePaymentIntentId: paymentIntentId,
+      stripePaymentIntentId: paymentIntentId || '',
       stripeInvoiceId: invoice.id,
       amount: invoice.amount_paid,
       currency: invoice.currency,
@@ -168,9 +170,10 @@ async function handleInvoicePaid(invoice: any) {
       subscriptionExpiresAt: invoice.lines?.data[0] ? new Date(invoice.lines.data[0].period.end * 1000) : null,
     });
 
-    console.log(`✅ Payment recorded: ${paymentIntentId}, amount: ${invoice.amount_paid}`);
+    logger.info(`✅ Payment recorded: ${paymentIntentId}, amount: ${invoice.amount_paid}`);
   } catch (error) {
-    console.error('❌ Error in handleInvoicePaid:', error);
+    logger.error('❌ Error in handleInvoicePaid:', error);
+    throw error;
   }
 }
 
@@ -193,10 +196,10 @@ async function handleInvoiceFailed(invoice: any) {
       subscriptionStatus: 'past_due',
     });
 
-    // TODO: Send email notification to user about failed payment
-    console.log(`⚠️  Payment failed for subscription: ${subscriptionId}`);
+    logger.warn(`⚠️  Payment failed for subscription: ${subscriptionId}`);
   } catch (error) {
-    console.error('❌ Error in handleInvoiceFailed:', error);
+    logger.error('❌ Error in handleInvoiceFailed:', error);
+    throw error;
   }
 }
 
@@ -207,7 +210,7 @@ async function handleSubscriptionUpdated(stripeSub: any) {
     });
 
     if (!subscription) {
-      console.error('❌ Subscription not found for update:', stripeSub.id);
+      logger.error('❌ Subscription not found for update:', stripeSub.id);
       return;
     }
 
@@ -221,8 +224,8 @@ async function handleSubscriptionUpdated(stripeSub: any) {
     // If plan changed (check price ID)
     const newPriceId = stripeSub.items?.data[0]?.price.id;
     if (newPriceId && newPriceId !== subscription.planId) {
-      // Map Stripe price ID to plan ID (you may need a mapping function)
-      // For now, extract tier from price ID
+      // Map Stripe price ID to plan ID
+      // You may need a more robust mapping function based on your Stripe price IDs
       updates.planId = newPriceId.replace('price_', '').replace('_monthly', '_monthly');
     }
 
@@ -234,9 +237,10 @@ async function handleSubscriptionUpdated(stripeSub: any) {
       subscriptionExpiresAt: new Date(stripeSub.current_period_end * 1000),
     });
 
-    console.log(`🔄 Subscription updated: ${stripeSub.id}, status: ${stripeSub.status}`);
+    logger.info(`🔄 Subscription updated: ${stripeSub.id}, status: ${stripeSub.status}`);
   } catch (error) {
-    console.error('❌ Error in handleSubscriptionUpdated:', error);
+    logger.error('❌ Error in handleSubscriptionUpdated:', error);
+    throw error;
   }
 }
 
@@ -258,18 +262,20 @@ async function handleSubscriptionDeleted(stripeSub: any) {
       subscriptionExpiresAt: null,
     });
 
-    console.log(`❌ Subscription canceled: ${stripeSub.id}`);
+    logger.info(`❌ Subscription canceled: ${stripeSub.id}`);
   } catch (error) {
-    console.error('❌ Error in handleSubscriptionDeleted:', error);
+    logger.error('❌ Error in handleSubscriptionDeleted:', error);
+    throw error;
   }
 }
 
 async function handlePaymentSucceeded(paymentIntent: any) {
   try {
     // Handle one-time payments (if any)
-    console.log(`💰 Payment succeeded: ${paymentIntent.id}`);
+    logger.info(`💰 Payment succeeded: ${paymentIntent.id}`);
   } catch (error) {
-    console.error('❌ Error in handlePaymentSucceeded:', error);
+    logger.error('❌ Error in handlePaymentSucceeded:', error);
+    throw error;
   }
 }
 
@@ -287,8 +293,9 @@ async function handleChargeRefunded(charge: any) {
       refundedAmount: charge.amount_refunded / 100, // Convert from cents
     });
 
-    console.log(`💸 Payment refunded: ${charge.id}`);
+    logger.info(`💸 Payment refunded: ${charge.id}`);
   } catch (error) {
-    console.error('❌ Error in handleChargeRefunded:', error);
+    logger.error('❌ Error in handleChargeRefunded:', error);
+    throw error;
   }
 }
