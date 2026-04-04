@@ -4,6 +4,7 @@ import app from "./app";
 import { configs } from "./app/configs";
 import logger from "./app/configs/logger";
 import databaseConnection from "./app/configs/database";
+import runAllSeeds from "./app/utils/seed";
 
 async function main() {
     // Validate database URL
@@ -16,6 +17,9 @@ async function main() {
 
     // Connect to MongoDB with retry logic
     await databaseConnection.connect(configs.db_url);
+
+    // Run database seeds (idempotent - safe to run on every startup)
+    await runAllSeeds();
 
     const server = http.createServer(app);
 

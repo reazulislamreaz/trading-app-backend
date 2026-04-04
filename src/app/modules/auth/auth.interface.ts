@@ -8,6 +8,13 @@ export type TAccount = {
   isVerified?: boolean;
   userProfileUrl?: string;
 
+  // Subscription & Payment
+  stripeCustomerId?: string;
+  subscriptionStatus?: "none" | "trialing" | "active" | "canceled" | "past_due" | "expired";
+  subscriptionTier?: "free" | "basic" | "pro" | "master";
+  subscriptionExpiresAt?: Date;
+  trialUsed?: boolean;
+
   // Email verification
   verificationCode?: string;
   verificationCodeExpires?: Date;

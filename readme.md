@@ -130,6 +130,11 @@ npm run dev              # Start with ts-node-dev (hot reload)
 npm run build            # Compile TypeScript
 npm start                # Start production server
 
+# Database Seeding
+npm run seed             # Seed database with initial data
+npm run seed:production  # Seed database in production mode
+npm run db:reset         # Reset and re-seed database
+
 # Testing
 npm test                 # Run tests
 npm run test:watch       # Watch mode
@@ -139,6 +144,146 @@ npm run lint             # Run ESLint
 npm run lint:fix         # Fix ESLint errors
 npm run format           # Format with Prettier
 npm run typecheck        # TypeScript type check
+```
+
+---
+
+## 🌱 Database Seeding
+
+The boilerplate includes a comprehensive seeding system that **runs automatically on every server startup**.
+
+### What Gets Seeded
+
+1. **Admin User** - Created from `ADMIN_EMAIL` and `ADMIN_PASSWORD` environment variables
+2. **Subscription Plans** - Default plans (Free, Basic, Pro, Master) with automatic Stripe sync
+3. **Demo Users** - Test accounts for development (john@example.com, jane@example.com)
+
+### Configuration
+
+Add these variables to your `.env` file:
+
+```env
+# Seed Admin Configuration
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=AdminSecurePass123!
+
+# Auto-seed on server startup (default: true)
+AUTO_SEED=true
+```
+
+### Automatic Seeding
+
+**Enabled by default** - seeds run automatically every time you start the server:
+
+```bash
+npm run dev    # Seeds run automatically
+npm start      # Seeds run automatically
+```
+
+This is **idempotent** - safe to run multiple times, won't create duplicates.
+
+### Stripe Integration for Subscription Plans
+
+The seed system includes **automatic Stripe synchronization**:
+
+1. **Server Starts** → Database connects
+2. **Plans Are Seeded** → Default subscription plans created in MongoDB
+3. **Stripe Sync** → Products and Prices automatically created in Stripe
+4. **IDs Stored** → `stripeProductId` and `stripePriceId` saved to each plan
+
+**How it works:**
+- Free plan: No Stripe sync needed (price = $0)
+- Paid plans: Automatically create Stripe Product + Price
+- Existing synced plans: Skipped (no duplicate Stripe products)
+
+**Configure Stripe:**
+```env
+# Add your Stripe keys to .env
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
+STRIPE_WEBHOOK_SECRET=whsec_your_stripe_webhook_secret
+```
+
+**If Stripe is not configured:**
+- Seed script will skip Stripe sync gracefully
+- Plans will be created without Stripe IDs
+- You can add Stripe keys later and re-run seed
+
+### Manual Seeding (Standalone)
+
+If you need to run seeds manually (without starting the server):
+
+```bash
+# Seed database (development)
+npm run seed
+
+# Seed database (production)
+npm run seed:production
+
+# Alternative: Run seed script directly
+npx ts-node scripts/seed.ts
+```
+
+### Disabling Auto-Seeding
+
+To disable automatic seeding on server startup:
+
+```env
+# Add to your .env file
+AUTO_SEED=false
+```
+
+Then run seeds manually when needed using `npm run seed`.
+
+### Seed Features
+
+- **Auto-run on startup**: Seeds execute automatically when server starts
+- **Idempotent**: Safe to run multiple times - won't create duplicates
+- **Admin User**: Creates admin account with hashed password
+- **Subscription Plans**: Inserts 6 default plans with monthly/yearly billing
+- **Stripe Auto-Sync**: Automatically creates Stripe Products/Prices for paid plans
+- **Demo Users**: Creates 2 test users for development
+- **Configurable**: Enable/disable via `AUTO_SEED` environment variable
+- **Graceful Degradation**: Works without Stripe (sync skipped if not configured)
+
+### Programmatic Seeding (in your code)
+
+You can also import and run seeding functions within your application:
+
+```typescript
+import runAllSeeds from './app/utils/seed';
+
+// Run all seeds programmatically
+await runAllSeeds();
+
+// Or run individual seeds
+import { seedAdmin, seedSubscriptionPlans, seedDemoUsers } from './app/utils/seed';
+
+await seedAdmin();
+await seedSubscriptionPlans();
+await seedDemoUsers();
+```
+
+### Customizing Seeds
+
+To add your own seed data:
+
+1. Edit `scripts/seed.ts` for standalone seeding
+2. Edit `src/app/utils/seed.ts` for in-app seeding
+3. Add your seed function to the `runAllSeeds()` function
+
+Example:
+```typescript
+const seedCustomData = async () => {
+  // Your custom seeding logic
+};
+
+const runAllSeeds = async () => {
+  await seedAdmin();
+  await seedSubscriptionPlans();
+  await seedDemoUsers();
+  await seedCustomData(); // Add your custom seed
+};
 ```
 
 ---

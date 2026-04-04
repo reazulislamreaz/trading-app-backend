@@ -9,10 +9,11 @@ import path from "path";
 import { configs } from "./app/configs";
 import globalErrorHandler from "./app/middlewares/global_error_handler";
 import { apiLimiter } from "./app/middlewares/rate_limiter";
-import notFound from "./app/middlewares/not_found_api";
 import appRouter from "./routes";
+import webhookRouter from "./webhooks";
 import logger from "./app/configs/logger";
 import { swaggerOptions } from "./swaggerOptions";
+import notFound from "./app/middlewares/not_found_api";
 
 // define app
 const app = express();
@@ -42,7 +43,11 @@ app.use(morgan('combined', {
 // Rate limiting
 app.use('/api/', apiLimiter);
 
-// Body parsing middleware
+// Webhook endpoints (MUST be before express.json() to use raw body)
+// Stripe webhook requires raw body for signature verification
+app.use("/webhooks", webhookRouter);
+
+// Body parsing middleware (applies to all routes EXCEPT webhooks above)
 app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));

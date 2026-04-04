@@ -83,6 +83,7 @@ export const configs = {
     seed: {
         admin_email: process.env.ADMIN_EMAIL,
         admin_password: process.env.ADMIN_PASSWORD,
+        auto_seed: process.env.AUTO_SEED !== 'false', // Default to true
     },
     allowed_origins: process.env.ALLOWED_ORIGINS,
     stripe: {

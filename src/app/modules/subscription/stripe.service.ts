@@ -1,0 +1,214 @@
+import Stripe from 'stripe';
+import { configs } from '../../configs';
+
+// @ts-ignore - Stripe types issue with v22
+const stripe = new Stripe(configs.stripe.secretKey!, {
+  apiVersion: '2024-12-18.acacia',
+});
+
+export const stripeService = {
+  // Create Stripe Customer
+  async createCustomer(email: string, name: string, accountId: string) {
+    return stripe.customers.create({
+      email,
+      name,
+      metadata: { accountId },
+    });
+  },
+
+  // Get Stripe Customer
+  async getCustomer(customerId: string) {
+    return stripe.customers.retrieve(customerId);
+  },
+
+  // Create Stripe Product
+  async createProduct(name: string, description: string, metadata?: Record<string, string>) {
+    return stripe.products.create({
+      name,
+      description,
+      metadata: metadata || {},
+    });
+  },
+
+  // Create Stripe Price for a Product
+  async createPrice(
+    productId: string,
+    unitAmount: number,
+    currency: string,
+    interval: 'month' | 'year' | 'one_time' | 'week'
+  ) {
+    return stripe.prices.create({
+      product: productId,
+      unit_amount: unitAmount,
+      currency,
+      recurring: interval !== 'one_time' ? { interval } : undefined,
+    });
+  },
+
+  // Sync Subscription Plan with Stripe (creates product + price if needed)
+  async syncPlanWithStripe(planData: {
+    planId: string;
+    name: string;
+    description: string;
+    price: number;
+    currency: string;
+    interval: 'month' | 'year';
+  }) {
+    try {
+      // Create product
+      const product = await stripe.products.create({
+        name: planData.name,
+        description: planData.description,
+        metadata: { planId: planData.planId },
+      });
+
+      // Create price
+      const price = await stripe.prices.create({
+        product: product.id,
+        unit_amount: planData.price,
+        currency: planData.currency,
+        recurring: { interval: planData.interval },
+      });
+
+      console.log(`✅ Stripe sync for plan "${planData.name}":`);
+      console.log(`   Product ID: ${product.id}`);
+      console.log(`   Price ID: ${price.id}`);
+
+      return {
+        stripeProductId: product.id,
+        stripePriceId: price.id,
+      };
+    } catch (error: any) {
+      console.error(`❌ Failed to sync plan "${planData.name}" with Stripe:`, error.message);
+      throw error;
+    }
+  },
+
+  // Create Checkout Session
+  async createCheckoutSession(
+    customerId: string,
+    priceId: string,
+    successUrl: string,
+    cancelUrl: string,
+    metadata?: Record<string, string>
+  ) {
+    return stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: metadata || {},
+      allow_promotion_codes: true,
+    });
+  },
+
+  // Create Checkout Session with Trial
+  async createCheckoutSessionWithTrial(
+    customerId: string,
+    priceId: string,
+    successUrl: string,
+    cancelUrl: string,
+    trialPeriodDays: number,
+    metadata?: Record<string, string>
+  ) {
+    return stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{ price: priceId, quantity: 1 }],
+      subscription_data: {
+        trial_period_days: trialPeriodDays,
+      },
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: metadata || {},
+      allow_promotion_codes: true,
+    });
+  },
+
+  // Create Billing Portal Session
+  async createPortalSession(customerId: string, returnUrl: string) {
+    return stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: returnUrl,
+    });
+  },
+
+  // Get Subscription Details
+  async getSubscription(subscriptionId: string) {
+    return stripe.subscriptions.retrieve(subscriptionId, {
+      expand: ['default_payment_method'],
+    });
+  },
+
+  // Cancel Subscription (at period end)
+  async cancelSubscription(subscriptionId: string) {
+    return stripe.subscriptions.update(subscriptionId, {
+      cancel_at_period_end: true,
+    });
+  },
+
+  // Resume Canceled Subscription
+  async resumeSubscription(subscriptionId: string) {
+    return stripe.subscriptions.update(subscriptionId, {
+      cancel_at_period_end: false,
+    });
+  },
+
+  // Update Subscription Plan (prorated)
+  async updateSubscriptionPlan(subscriptionId: string, newPriceId: string) {
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const currentItemId = subscription.items.data[0].id;
+
+    return stripe.subscriptions.update(subscriptionId, {
+      items: [{ id: currentItemId, price: newPriceId }],
+      proration_behavior: 'create_prorations',
+    });
+  },
+
+  // Create One-Time Payment (Master Trader revenue share)
+  async createPaymentIntent(
+    amount: number,
+    currency: string,
+    customerId: string,
+    description: string,
+    metadata?: Record<string, string>
+  ) {
+    return stripe.paymentIntents.create({
+      amount,
+      currency,
+      customer: customerId,
+      description,
+      metadata,
+      automatic_payment_methods: { enabled: true },
+    });
+  },
+
+  // Refund Payment
+  async refundPayment(paymentIntentId: string, amount?: number) {
+    return stripe.refunds.create({
+      payment_intent: paymentIntentId,
+      amount: amount ? amount * 100 : undefined, // Convert to cents
+    });
+  },
+
+  // Get Invoice
+  async getInvoice(invoiceId: string) {
+    return stripe.invoices.retrieve(invoiceId);
+  },
+
+  // List Customer Invoices
+  async listCustomerInvoices(customerId: string, limit: number = 10) {
+    return stripe.invoices.list({
+      customer: customerId,
+      limit,
+    });
+  },
+
+  // Get Payment Intent
+  async getPaymentIntent(paymentIntentId: string) {
+    return stripe.paymentIntents.retrieve(paymentIntentId);
+  },
+};

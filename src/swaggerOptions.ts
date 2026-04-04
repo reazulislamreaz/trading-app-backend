@@ -2,6 +2,7 @@ import { configs } from "./app/configs";
 import { authSwaggerDocs } from "./app/modules/auth/auth.swagger";
 import { userSwaggerDocs } from "./app/modules/user/user.swagger";
 import { uploadSwaggerDocs } from "./app/modules/upload.ts/upload.swagger";
+import { subscriptionSwaggerDocs } from "./app/modules/subscription/subscription.swagger";
 
 export const swaggerOptions = {
   definition: {
@@ -9,12 +10,13 @@ export const swaggerOptions = {
     info: {
       title: "Trading App API",
       version: "1.0.0",
-      description: "Production-level SaaS trading signal platform API with JWT authentication and role-based access control.",
+      description: "Production-level SaaS trading signal platform API with JWT authentication, role-based access control, and Stripe subscription management.",
     },
     paths: {
       ...authSwaggerDocs,
       ...userSwaggerDocs,
       ...uploadSwaggerDocs,
+      ...subscriptionSwaggerDocs,
     },
     servers:
       configs.env === "production"

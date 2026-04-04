@@ -1,8 +1,16 @@
-import bcrypt from "bcrypt";
-import { Account_Model } from "../modules/auth/auth.schema";
-import { SubscriptionPlan_Model, DEFAULT_PLANS } from "../modules/subscription/subscription.plans";
-import { configs } from "../configs";
-import { stripeService } from "../modules/subscription/stripe.service";
+import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load environment variables from .env file
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+// Import models and seed data
+import { Account_Model } from '../src/app/modules/auth/auth.schema';
+import { SubscriptionPlan_Model, DEFAULT_PLANS } from '../src/app/modules/subscription/subscription.plans';
+import { configs } from '../src/app/configs';
+import { stripeService } from '../src/app/modules/subscription/stripe.service';
 
 /**
  * Seed admin user into the database
@@ -12,29 +20,29 @@ const seedAdmin = async () => {
   const adminPassword = configs.seed.admin_password;
 
   if (!adminEmail || !adminPassword) {
-    console.log("⚠️  ADMIN_EMAIL or ADMIN_PASSWORD not found in env - skipping admin seed");
+    console.log('⚠️  ADMIN_EMAIL or ADMIN_PASSWORD not found in env - skipping admin seed');
     return;
   }
 
   const isExist = await Account_Model.findOne({ email: adminEmail });
 
   if (isExist) {
-    console.log("✅ Admin user already exists:", adminEmail);
+    console.log('✅ Admin user already exists:', adminEmail);
     return;
   }
 
   const hashedPassword = await bcrypt.hash(adminPassword, 12);
 
   await Account_Model.create({
-    name: "Admin User",
+    name: 'Admin User',
     email: adminEmail,
     password: hashedPassword,
-    role: "ADMIN",
+    role: 'ADMIN',
     isVerified: true,
-    accountStatus: "ACTIVE",
+    accountStatus: 'ACTIVE',
   });
-  
-  console.log("✅ Admin user created successfully:", adminEmail);
+
+  console.log('✅ Admin user created successfully:', adminEmail);
 };
 
 /**
@@ -44,12 +52,12 @@ const syncPlansWithStripe = async () => {
   try {
     // Check if Stripe is configured
     if (!configs.stripe.secretKey || configs.stripe.secretKey === 'sk_test_your_stripe_publishable_key') {
-      console.log("⚠️  Stripe not configured - skipping Stripe sync");
-      console.log("   Configure STRIPE_SECRET_KEY in .env to enable Stripe integration");
+      console.log('⚠️  Stripe not configured - skipping Stripe sync');
+      console.log('   Configure STRIPE_SECRET_KEY in .env to enable Stripe integration');
       return false;
     }
 
-    console.log("\n🔄 Syncing subscription plans with Stripe...");
+    console.log('\n🔄 Syncing subscription plans with Stripe...');
 
     const paidPlans = DEFAULT_PLANS.filter(plan => plan.price > 0);
     let syncedCount = 0;
@@ -97,7 +105,7 @@ const syncPlansWithStripe = async () => {
     console.log(`\n✅ Synced ${syncedCount}/${paidPlans.length} paid plans with Stripe`);
     return true;
   } catch (error: any) {
-    console.error("❌ Stripe sync failed:", error.message);
+    console.error('❌ Stripe sync failed:', error.message);
     return false;
   }
 };
@@ -111,7 +119,7 @@ const seedSubscriptionPlans = async () => {
     const existingPlans = await SubscriptionPlan_Model.countDocuments();
 
     if (existingPlans > 0) {
-      console.log("✅ Subscription plans already exist - skipping seed");
+      console.log('✅ Subscription plans already exist - skipping seed');
       return;
     }
 
@@ -122,9 +130,8 @@ const seedSubscriptionPlans = async () => {
     DEFAULT_PLANS.forEach(plan => {
       console.log(`   • ${plan.name} - $${plan.price / 100}/${plan.interval}`);
     });
-
   } catch (error) {
-    console.error("❌ Failed to seed subscription plans:", error);
+    console.error('❌ Failed to seed subscription plans:', error);
     throw error;
   }
 };
@@ -135,20 +142,20 @@ const seedSubscriptionPlans = async () => {
 const seedDemoUsers = async () => {
   const demoUsers = [
     {
-      name: "John Doe",
-      email: "john@example.com",
-      password: "DemoPass123!",
-      role: "USER",
+      name: 'John Doe',
+      email: 'john@example.com',
+      password: 'DemoPass123!',
+      role: 'USER',
       isVerified: true,
-      accountStatus: "ACTIVE",
+      accountStatus: 'ACTIVE',
     },
     {
-      name: "Jane Smith",
-      email: "jane@example.com",
-      password: "DemoPass123!",
-      role: "USER",
+      name: 'Jane Smith',
+      email: 'jane@example.com',
+      password: 'DemoPass123!',
+      role: 'USER',
       isVerified: true,
-      accountStatus: "ACTIVE",
+      accountStatus: 'ACTIVE',
     },
   ];
 
@@ -175,31 +182,58 @@ const seedDemoUsers = async () => {
  * Run all seed operations
  */
 const runAllSeeds = async () => {
-  // Check if auto-seeding is enabled
-  if (!configs.seed.auto_seed) {
-    console.log("\n⏭️  Auto-seeding disabled - skipping seed operations\n");
-    return;
-  }
-
-  console.log("\n🌱 Running seed operations...");
-  console.log("─".repeat(50));
+  console.log('\n🌱 Running seed operations...');
+  console.log('─'.repeat(50));
 
   try {
     await seedAdmin();
     await seedSubscriptionPlans();
-    
-    // Try to sync with Stripe (will gracefully skip if Stripe not configured)
     await syncPlansWithStripe();
-    
     await seedDemoUsers();
 
-    console.log("─".repeat(50));
-    console.log("✅ All seed operations completed successfully\n");
+    console.log('─'.repeat(50));
+    console.log('✅ All seed operations completed successfully\n');
   } catch (error) {
-    console.error("❌ Seed operation failed:", error);
+    console.error('❌ Seed operation failed:', error);
     throw error;
   }
 };
 
-export default runAllSeeds;
-export { seedAdmin, seedSubscriptionPlans, seedDemoUsers, syncPlansWithStripe };
+/**
+ * Connect to database
+ */
+const connectDB = async () => {
+  if (!configs.db_url) {
+    throw new Error('DB_URL environment variable is required');
+  }
+
+  try {
+    await mongoose.connect(configs.db_url);
+    console.log('✅ Database connected');
+  } catch (error) {
+    console.error('❌ Failed to connect to database:', error);
+    throw error;
+  }
+};
+
+/**
+ * Main execution
+ */
+const main = async () => {
+  try {
+    await connectDB();
+    await runAllSeeds();
+    
+    // Disconnect and exit
+    await mongoose.disconnect();
+    console.log('🔌 Database disconnected');
+    process.exit(0);
+  } catch (error) {
+    console.error('🚨 Seed script failed:', error);
+    await mongoose.disconnect();
+    process.exit(1);
+  }
+};
+
+// Run the script
+main();

@@ -12,6 +12,13 @@ const authSchema = new Schema<TAccount>({
     isVerified: { type: Boolean, default: false },
     userProfileUrl: { type: String, default: "" },
 
+    // Subscription & Payment
+    stripeCustomerId: { type: String },
+    subscriptionStatus: { type: String, default: "none" },
+    subscriptionTier: { type: String, default: "free" },
+    subscriptionExpiresAt: { type: Date },
+    trialUsed: { type: Boolean, default: false },
+
     // Email verification
     verificationCode: { type: String, select: false },
     verificationCodeExpires: { type: Date, select: false },
