@@ -84,5 +84,11 @@ export const configs = {
         admin_email: process.env.ADMIN_EMAIL,
         admin_password: process.env.ADMIN_PASSWORD,
     },
-    allowed_origins: process.env.ALLOWED_ORIGINS
+    allowed_origins: process.env.ALLOWED_ORIGINS,
+    stripe: {
+        secretKey: process.env.STRIPE_SECRET_KEY,
+        publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+        webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+        frontend_url: process.env.STRIPE_FRONTEND_URL || 'http://localhost:3000',
+    },
 };

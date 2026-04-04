@@ -6,6 +6,7 @@ export type TAccount = {
   accountStatus?: "ACTIVE" | "INACTIVE" | "SUSPENDED";
   role?: "USER" | "ADMIN" | "MASTER";
   isVerified?: boolean;
+  userProfileUrl?: string;
 
   // Email verification
   verificationCode?: string;

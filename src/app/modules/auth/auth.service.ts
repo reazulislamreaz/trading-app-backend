@@ -33,11 +33,6 @@ type LoginReturnType = {
   requiresTwoFactor?: boolean;
 };
 
-type GetMyProfileReturnType = {
-  account: Omit<TAccount, 'password'>;
-  profile: any | null;
-};
-
 /**
  * Generate a cryptographically secure OTP
  */
@@ -226,14 +221,11 @@ const login_user_from_db = async (payload: TLoginPayload): Promise<LoginReturnTy
 /**
  * Get current user profile
  */
-const get_my_profile_from_db = async (email: string): Promise<GetMyProfileReturnType> => {
+const get_my_profile_from_db = async (email: string): Promise<{ account: Omit<TAccount, 'password'> }> => {
   const account = await Account_Model.findOne({ email }).select('-password');
-  
-  const profile = await User_Model.findOne({ accountId: account!._id });
-  
+
   return {
     account: account as Omit<TAccount, 'password'>,
-    profile,
   };
 };
 
@@ -277,10 +269,10 @@ const refresh_token_from_db = async (token: string): Promise<string> => {
  */
 const change_password_from_db = async (
   user: JwtPayloadType,
-  payload: { oldPassword: string; newPassword: string },
+  payload: { oldPassword: string; newPassword: string; confirmNewPassword: string },
 ): Promise<string> => {
   const account = await Account_Model.findOne({ email: user.email }).select('+password');
-  
+
   if (!account) {
     throw new AppError(AUTH_ERRORS.ACCOUNT_NOT_FOUND, httpStatus.NOT_FOUND);
   }
@@ -290,8 +282,16 @@ const change_password_from_db = async (
     throw new AppError(AUTH_ERRORS.INVALID_OLD_PASSWORD, httpStatus.UNAUTHORIZED);
   }
 
+  if (payload.newPassword !== payload.confirmNewPassword) {
+    throw new AppError(AUTH_ERRORS.PASSWORD_MISMATCH, httpStatus.BAD_REQUEST);
+  }
+
+  if (payload.oldPassword === payload.newPassword) {
+    throw new AppError("New password must be different from your current password", httpStatus.BAD_REQUEST);
+  }
+
   const hashedPassword = await hashPassword(payload.newPassword);
-  
+
   await Account_Model.findOneAndUpdate(
     { email: account.email },
     {
@@ -299,7 +299,7 @@ const change_password_from_db = async (
       lastPasswordChange: new Date(),
     }
   );
-  
+
   return AUTH_ERRORS.PASSWORD_CHANGED;
 };
 
@@ -634,9 +634,6 @@ const logout_user_from_db = async (
 
   return AUTH_ERRORS.LOGOUT_SUCCESS;
 };
-
-// Import User_Model
-import { User_Model } from "../user/user.schema";
 
 export const auth_services = {
   register_user_into_db,

@@ -210,6 +210,8 @@ export const authSwaggerDocs = {
     post: {
       tags: ["Authentication"],
       summary: "Change password",
+      description:
+        "Changes the password for the authenticated user. The new password must be at least 8 characters and contain an uppercase letter, a lowercase letter, a number, and a special character.",
       security: [{ bearerAuth: [] }],
       requestBody: {
         required: true,
@@ -217,13 +219,23 @@ export const authSwaggerDocs = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["oldPassword", "newPassword"],
+              required: ["oldPassword", "newPassword", "confirmNewPassword"],
               properties: {
-                oldPassword: { type: "string", example: "OldPass123!" },
-                newPassword: { 
-                  type: "string", 
+                oldPassword: {
+                  type: "string",
+                  example: "OldPass123!",
+                  description: "Current password",
+                },
+                newPassword: {
+                  type: "string",
                   example: "NewSecurePass456!",
-                  description: "Must meet password requirements"
+                  description:
+                    "New password. Min 8 chars, must include uppercase, lowercase, number, and special character.",
+                },
+                confirmNewPassword: {
+                  type: "string",
+                  example: "NewSecurePass456!",
+                  description: "Must match newPassword exactly.",
                 },
               },
             },
@@ -231,8 +243,24 @@ export const authSwaggerDocs = {
         },
       },
       responses: {
-        200: { description: "Password changed successfully" },
-        400: { description: "Invalid old password" },
+        200: {
+          description: "Password changed successfully",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  success: { type: "boolean", example: true },
+                  message: { type: "string", example: "Password changed successfully" },
+                  data: { type: "null" },
+                },
+              },
+            },
+          },
+        },
+        400: { description: "Bad Request — Validation failed, passwords do not match, or new password same as old" },
+        401: { description: "Unauthorized — Invalid old password or not authenticated" },
+        404: { description: "Account not found" },
       },
     },
   },

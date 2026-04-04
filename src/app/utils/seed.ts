@@ -1,7 +1,6 @@
 import bcrypt from "bcrypt";
 import { Account_Model } from "../modules/auth/auth.schema";
 import { configs } from "../configs";
-import { User_Model } from "../modules/user/user.schema";
 
 const seedAdmin = async () => {
   const adminEmail = configs.seed.admin_email;
@@ -22,15 +21,11 @@ const seedAdmin = async () => {
     10,
   );
 
-  const account = await Account_Model.create({
+  await Account_Model.create({
     email: adminEmail,
     password: hashedPassword,
     role: "ADMIN",
     isVerified: true,
-  });
-  await User_Model.create({
-    name: "Admin",
-    accountId: account._id,
   });
   console.log("Admin created successfully");
 };

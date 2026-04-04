@@ -10,6 +10,7 @@ const authSchema = new Schema<TAccount>({
     accountStatus: { type: String, default: "ACTIVE" },
     role: { type: String, default: "USER" },
     isVerified: { type: Boolean, default: false },
+    userProfileUrl: { type: String, default: "" },
 
     // Email verification
     verificationCode: { type: String, select: false },
@@ -47,8 +48,8 @@ authSchema.index({ email: 1, isDeleted: 1 });
 authSchema.index({ email: 1, accountStatus: 1 });
 authSchema.index({ email: 1, twoFactorEnabled: 1 });
 
-// TTL indexes for auto-cleanup of expired codes (expireAfterSeconds: 0 means expire at the exact time)
-authSchema.index({ verificationCodeExpires: 1 }, { expireAfterSeconds: 0, background: true });
-authSchema.index({ resetPasswordExpire: 1 }, { expireAfterSeconds: 0, background: true });
+// NOTE: TTL indexes removed - they were incorrectly deleting entire account documents
+// when verification/reset codes expired. Expiration is now handled in application logic
+// by checking the expiry date fields before using the codes.
 
 export const Account_Model = model("account", authSchema);

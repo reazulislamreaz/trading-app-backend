@@ -4,7 +4,7 @@ export const userSwaggerDocs = {
             tags: ["User"],
             summary: "Update user profile",
             description:
-                "Updates the authenticated user's profile information. To update the profile image, first upload the image via the Upload module (`POST /api/v1/upload/file`), then pass the returned URL as `profileImageUrl` in this endpoint. Accessible by ADMIN and USER roles.",
+                "Updates the authenticated user's profile information. To update the profile image, first upload the image via the Upload module (`POST /api/v1/upload/file`), then pass the returned URL as `userProfileUrl` in this endpoint. Accessible by ADMIN and USER roles.",
             security: [{ bearerAuth: [] }],
             requestBody: {
                 required: true,
@@ -18,7 +18,7 @@ export const userSwaggerDocs = {
                                     description: "User's full name",
                                     example: "John Doe",
                                 },
-                                profileImageUrl: {
+                                userProfileUrl: {
                                     type: "string",
                                     format: "uri",
                                     description: "URL of the profile image. Obtain this by first uploading an image to POST /api/v1/upload/file.",
@@ -44,11 +44,13 @@ export const userSwaggerDocs = {
                                         properties: {
                                             _id: { type: "string", example: "64b2e1b9d1234f0012ab5678" },
                                             name: { type: "string", example: "John Doe" },
-                                            profileImageUrl: {
+                                            email: { type: "string", example: "john@example.com" },
+                                            userProfileUrl: {
                                                 type: "string",
                                                 example: "https://your-bucket.s3.your-region.amazonaws.com/uploads/profile_abc123.jpg",
                                             },
                                             role: { type: "string", enum: ["USER", "ADMIN", "MASTER"], example: "USER" },
+                                            accountStatus: { type: "string", enum: ["ACTIVE", "INACTIVE", "SUSPENDED"], example: "ACTIVE" },
                                             updatedAt: {
                                                 type: "string",
                                                 example: "2025-10-10T10:00:00Z",
@@ -94,7 +96,7 @@ export const userSwaggerDocs = {
                                 type: "object",
                                 properties: {
                                     success: { type: "boolean", example: true },
-                                    message: { type: "string", example: "All user get successful." },
+                                    message: { type: "string", example: "Users retrieved successfully" },
                                     meta: {
                                         type: "object",
                                         properties: {
@@ -141,7 +143,7 @@ export const userSwaggerDocs = {
                                 type: "object",
                                 properties: {
                                     success: { type: "boolean", example: true },
-                                    message: { type: "string", example: "Single user get successful." },
+                                    message: { type: "string", example: "User details retrieved successfully" },
                                     data: { type: "object" },
                                 },
                             },
