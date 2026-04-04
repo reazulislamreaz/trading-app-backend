@@ -39,9 +39,6 @@ const auth = (...roles: UserRoleType[]) => {
             if (isUserExist?.isDeleted) {
                 throw new AppError('This account is deleted', 401);
             }
-            if (!isUserExist?.isVerified) {
-                throw new AppError('This account is not verified', 401);
-            }
 
             req.user = verifiedUser;
             next();
