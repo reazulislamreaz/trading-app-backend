@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as UploadService from "./upload.service";
+import logger from "../../configs/logger";
 
 export const uploadFile = async (req: Request, res: Response) => {
   try {
@@ -28,10 +29,19 @@ export const uploadFile = async (req: Request, res: Response) => {
       success: false,
       message: "No file uploaded",
     });
-  } catch (error) {
-    return res.status(500).json({
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    logger.error(`Upload failed: ${errorMessage}`, error);
+
+    const statusCode = errorMessage.includes("Invalid file type") ? 400 : 500;
+    const message =
+      statusCode === 400
+        ? errorMessage
+        : "Upload failed. Please check server logs for details.";
+
+    return res.status(statusCode).json({
       success: false,
-      message: "Upload failed",
+      message,
     });
   }
 };

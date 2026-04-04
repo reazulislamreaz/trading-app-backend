@@ -9,6 +9,9 @@ logs/
 *.log
 npm-debug.log*
 
+# Uploaded files (local storage)
+uploads/
+
 # Docker
 docker-compose.override.yml
 .docker/

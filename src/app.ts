@@ -5,6 +5,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import swaggerJSDoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
+import path from "path";
 import { configs } from "./app/configs";
 import globalErrorHandler from "./app/middlewares/global_error_handler";
 import { apiLimiter } from "./app/middlewares/rate_limiter";
@@ -17,6 +18,10 @@ import { swaggerOptions } from "./swaggerOptions";
 const app = express();
 const swaggerSpec = swaggerJSDoc(swaggerOptions);
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// Serve uploaded files statically
+const uploadDir = path.join(process.cwd(), "uploads");
+app.use("/uploads", express.static(uploadDir));
 
 // Security middleware
 app.use(helmet()); // Add security headers
