@@ -4,7 +4,7 @@ import { TUser } from "./user.interface";
 const user_schema = new Schema<TUser>(
   {
     name: { type: String, required: false },
-    photo: { type: String, required: false },
+    profileImageUrl: { type: String, required: false },
     accountId: { type: String, required: false, ref: "account" },
   },
   {

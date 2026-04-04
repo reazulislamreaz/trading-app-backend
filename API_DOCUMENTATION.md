@@ -462,23 +462,20 @@ All user management endpoints are prefixed with `/api/v1/user`.
 
 **PATCH** `/api/v1/user/update-profile`
 
-Update user profile information and optionally upload a profile image.
+Updates the authenticated user's profile information. To update the profile image, first upload the image via the Upload module (`POST /api/v1/upload/file`), then pass the returned URL as `profileImageUrl` in this endpoint.
 
 **Headers:**
 ```
 Authorization: Bearer <access_token>
-Content-Type: multipart/form-data
+Content-Type: application/json
 ```
 
-**Request Body (multipart/form-data):**
-```
-Form Data:
-  - data: JSON string
-    {
-      "name": "John Doe",
-      "photo": "https://example.com/photo.jpg"
-    }
-  - image: File (optional)
+**Request Body (JSON):**
+```json
+{
+  "name": "John Doe",
+  "profileImageUrl": "https://your-bucket.s3.your-region.amazonaws.com/uploads/profile_abc123.jpg"
+}
 ```
 
 **Response (200 OK):**
@@ -487,10 +484,9 @@ Form Data:
   "success": true,
   "message": "Profile update successful.",
   "data": {
-    "id": "64b2e1b9d1234f0012ab5678",
+    "_id": "64b2e1b9d1234f0012ab5678",
     "name": "John Doe",
-    "email": "user@example.com",
-    "photo": "/uploads/users/profile_64b2e1b9.png",
+    "profileImageUrl": "https://your-bucket.s3.your-region.amazonaws.com/uploads/profile_abc123.jpg",
     "role": "USER",
     "updatedAt": "2024-01-01T10:00:00Z"
   }
@@ -618,41 +614,43 @@ Authorization: Bearer <access_token>
 
 ## File Upload
 
-> **Note:** Upload routes are defined but not mounted by default. To enable, add to `src/routes.ts`:
-> ```typescript
-> import uploadRoute from './app/modules/upload.ts/upload.route';
-> const moduleRoutes = [
->   { path: '/auth', route: authRoute },
->   { path: '/user', route: userRoute },
->   { path: '/upload', route: uploadRoute }  // Add this line
-> ];
-> ```
+The upload module is the **central file upload service** for the entire application. All file uploads must go through these endpoints. Other modules (like User Profile) only store the URL returned by the upload module — they do NOT handle file uploads directly.
+
+### Architecture
+
+```
+Frontend → POST /api/v1/upload/file → Upload Module → S3 → Returns URL
+Frontend → PATCH /api/v1/user/update-profile (with profileImageUrl=URL) → User Module → Saves URL
+```
+
+### Supported File Types
+- Images: `jpg`, `jpeg`, `png`, `webp`
+- Documents: `pdf`, `csv`
+- Max file size: **20MB**
 
 ### 1. Upload Single File
 
 **POST** `/api/v1/upload/file`
 
-Upload a single file.
+Upload a single file to S3 storage.
 
 **Request Body (multipart/form-data):**
 ```
 Form Data:
-  - file: File
+  - file: File (required)
 ```
-
-**Supported File Types:**
-- Images: jpg, jpeg, png, webp
-- Documents: pdf, csv
-
-**Max File Size:** 20MB
 
 **Response (200 OK):**
 ```json
 {
   "success": true,
-  "url": "https://cdn.example.com/uploads/file_1234567890.jpg"
+  "url": "https://your-bucket.s3.your-region.amazonaws.com/uploads/abc123-def456.jpg"
 }
 ```
+
+**Error Responses:**
+- `400 Bad Request` — No file provided or invalid file type
+- `500 Internal Server Error` — Upload failed
 
 ---
 
@@ -660,12 +658,12 @@ Form Data:
 
 **POST** `/api/v1/upload/files`
 
-Upload multiple files (up to 10).
+Upload multiple files (up to 10) to S3 storage.
 
 **Request Body (multipart/form-data):**
 ```
 Form Data:
-  - files: File[] (max 10)
+  - files: File[] (required, max 10 files)
 ```
 
 **Response (200 OK):**
@@ -673,11 +671,15 @@ Form Data:
 {
   "success": true,
   "urls": [
-    "https://cdn.example.com/uploads/file_1.jpg",
-    "https://cdn.example.com/uploads/file_2.jpg"
+    "https://your-bucket.s3.your-region.amazonaws.com/uploads/file_1.jpg",
+    "https://your-bucket.s3.your-region.amazonaws.com/uploads/file_2.jpg"
   ]
 }
 ```
+
+**Error Responses:**
+- `400 Bad Request` — No files provided or invalid file type
+- `500 Internal Server Error` — Upload failed
 
 ---
 

@@ -1,6 +1,7 @@
 import { configs } from "./app/configs";
 import { authSwaggerDocs } from "./app/modules/auth/auth.swagger";
 import { userSwaggerDocs } from "./app/modules/user/user.swagger";
+import { uploadSwaggerDocs } from "./app/modules/upload.ts/upload.swagger";
 
 export const swaggerOptions = {
   definition: {
@@ -13,6 +14,7 @@ export const swaggerOptions = {
     paths: {
       ...authSwaggerDocs,
       ...userSwaggerDocs,
+      ...uploadSwaggerDocs,
     },
     servers:
       configs.env === "production"
