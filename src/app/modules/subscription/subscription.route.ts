@@ -3,6 +3,7 @@ import { subscription_controllers } from './subscription.controller';
 import { subscription_validations } from './subscription.validation';
 import auth from '../../middlewares/auth';
 import RequestValidator from '../../middlewares/request_validator';
+import { checkoutLimiter } from '../../middlewares/rate_limiter';
 
 const subscriptionRouter = Router();
 
@@ -12,9 +13,10 @@ subscriptionRouter.get('/plans', subscription_controllers.get_all_plans);
 // All other routes require authentication
 subscriptionRouter.use(auth('USER', 'ADMIN', 'MASTER'));
 
-// Create checkout session
+// Create checkout session (with strict rate limiting)
 subscriptionRouter.post(
   '/checkout',
+  checkoutLimiter,
   RequestValidator(subscription_validations.create_checkout),
   subscription_controllers.create_checkout_session
 );

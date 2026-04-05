@@ -31,8 +31,29 @@ export const authLimiter = rateLimit({
  */
 export const passwordResetLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10, // Limit each IP to 3 requests per hour
+  max: 10, // Limit each IP to 10 requests per hour
   message: 'Too many password reset attempts, please try again after 1 hour',
   standardHeaders: true,
   legacyHeaders: false,
+});
+
+/**
+ * Rate limiter for checkout endpoints
+ * Limits each authenticated user to 5 checkout sessions per hour
+ * Prevents abuse and excessive Stripe session creation
+ */
+export const checkoutLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5, // Limit each user to 5 checkout attempts per hour
+  message: 'Too many checkout attempts, please try again after 1 hour',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    // Rate limit by user ID instead of IP for authenticated endpoints
+    return (req.user?.userId as string) || req.ip || 'anonymous';
+  },
+  skip: (req) => {
+    // Only count failed requests or successful ones
+    return false;
+  },
 });
