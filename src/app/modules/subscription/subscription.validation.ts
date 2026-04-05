@@ -22,8 +22,14 @@ const create_billing_portal = z.object({
 });
 
 const get_payment_history = z.object({
-  page: z.string().optional(),
-  limit: z.string().optional(),
+  page: z.string().optional().refine(
+    (val) => !val || (Number.isInteger(Number(val)) && Number(val) > 0),
+    { message: 'Page must be a positive integer' }
+  ),
+  limit: z.string().optional().refine(
+    (val) => !val || (Number.isInteger(Number(val)) && Number(val) > 0 && Number(val) <= 100),
+    { message: 'Limit must be a positive integer between 1 and 100' }
+  ),
 });
 
 export const subscription_validations = {

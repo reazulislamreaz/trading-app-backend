@@ -6,6 +6,7 @@ import { Payment_Model } from './payment.schema';
 import { SubscriptionPlan_Model } from './subscription.plans';
 import { stripeService } from './stripe.service';
 import { configs } from '../../configs';
+import { Types } from 'mongoose';
 
 export const subscription_services = {
   // Get all active subscription plans
@@ -292,13 +293,16 @@ export const subscription_services = {
   // Get payment history
   async get_payment_history(accountId: string, page: number = 1, limit: number = 10) {
     const skip = (page - 1) * limit;
+    const accountIdObj = new Types.ObjectId(accountId);
 
-    const payments = await Payment_Model.find({ accountId })
+    const payments = await Payment_Model.find({ accountId: accountIdObj })
+      .populate('subscriptionId', 'planId status currentPeriodEnd')
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
-    const total = await Payment_Model.countDocuments({ accountId });
+    const total = await Payment_Model.countDocuments({ accountId: accountIdObj });
 
     return {
       data: payments,

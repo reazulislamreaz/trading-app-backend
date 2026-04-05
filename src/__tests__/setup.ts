@@ -1,5 +1,6 @@
 // Jest test setup file
 import { jest } from '@jest/globals';
+import mongoose from 'mongoose';
 
 // Mock console methods to reduce noise in tests
 global.console = {
@@ -24,6 +25,29 @@ process.env.REFRESH_EXPIRES = '7d';
 process.env.RESET_EXPIRES = '10m';
 process.env.FRONT_END_URL = 'http://localhost:3000';
 process.env.ALLOWED_ORIGINS = 'http://localhost:3000';
+process.env.STRIPE_SECRET_KEY = 'sk_test_dummy_key_for_testing_12345678';
+process.env.STRIPE_PUBLISHABLE_KEY = 'pk_test_dummy_key_for_testing_12345678';
+process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test_webhook_secret_12345678';
+
+// Connect to test database before all tests
+beforeAll(async () => {
+  try {
+    await mongoose.connect(process.env.DB_URL as string);
+    console.log('Connected to test database');
+  } catch (error) {
+    console.warn('Could not connect to test database:', error);
+  }
+});
+
+// Disconnect from test database after all tests
+afterAll(async () => {
+  try {
+    await mongoose.disconnect();
+    console.log('Disconnected from test database');
+  } catch (error) {
+    console.warn('Error disconnecting from test database:', error);
+  }
+});
 
 // Clear all mocks before each test
 beforeEach(() => {
