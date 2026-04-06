@@ -32,7 +32,8 @@ async function main() {
     // Set request timeout
     server.timeout = 30000; // 30 seconds
 
-    app.listen(configs.port as any, configs.ip.backend_ip as any, () => {
+    // Use server.listen() instead of app.listen() so server.close() works for graceful shutdown
+    server.listen(Number(configs.port) || 3000, configs.ip.backend_ip as string, () => {
         console.log(`Server listening on port ${configs.port}`);
         logger.info(`🚀 Server started on port ${configs.port} (${configs.env})`);
     });
@@ -40,14 +41,14 @@ async function main() {
     // Graceful shutdown
     const gracefulShutdown = async (signal: string) => {
         logger.info(`\n🛑 ${signal} received. Shutting down gracefully...`);
-        
+
         // Stop accepting new connections
         server.close(async () => {
             logger.info('🔌 HTTP server closed');
-            
+
             // Close database connection
             await databaseConnection.disconnect();
-            
+
             logger.info('✅ Graceful shutdown completed');
             process.exit(0);
         });

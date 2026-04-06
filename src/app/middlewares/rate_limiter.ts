@@ -57,3 +57,19 @@ export const checkoutLimiter = rateLimit({
     return false;
   },
 });
+
+/**
+ * Rate limiter for file upload endpoints
+ * Limits each authenticated user to 20 uploads per hour
+ * Prevents storage abuse and excessive S3 costs
+ */
+export const fileUploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 20, // Limit each user to 20 uploads per hour
+  message: 'Upload limit exceeded. Please try again later or contact support.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return (req.user?.userId as string) || req.ip || 'anonymous';
+  },
+});

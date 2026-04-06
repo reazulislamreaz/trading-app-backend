@@ -3,20 +3,30 @@ import { authSwaggerDocs } from "./app/modules/auth/auth.swagger";
 import { userSwaggerDocs } from "./app/modules/user/user.swagger";
 import { uploadSwaggerDocs } from "./app/modules/upload.ts/upload.swagger";
 import { subscriptionSwaggerDocs } from "./app/modules/subscription/subscription.swagger";
+import { signalSwaggerDocs } from "./app/modules/signal/signal.swagger";
+import { masterSwaggerDocs } from "./app/modules/master/master.swagger";
+import { followSwaggerDocs } from "./app/modules/follow/follow.swagger";
+import { notificationSwaggerDocs } from "./app/modules/notification/notification.swagger";
+import { adminSwaggerDocs } from "./app/modules/admin/admin.swagger";
 
 export const swaggerOptions = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "Trading App API",
+      title: "Trading Signal Platform API",
       version: "1.0.0",
-      description: "Production-level SaaS trading signal platform API with JWT authentication, role-based access control, and Stripe subscription management.",
+      description: "Production-level SaaS trading signal platform. Users subscribe to the platform to access trading signals posted by approved Master Traders. All payments go to the Admin/Platform Stripe account.",
     },
     paths: {
       ...authSwaggerDocs,
       ...userSwaggerDocs,
       ...uploadSwaggerDocs,
       ...subscriptionSwaggerDocs,
+      ...signalSwaggerDocs,
+      ...masterSwaggerDocs,
+      ...followSwaggerDocs,
+      ...notificationSwaggerDocs,
+      ...adminSwaggerDocs,
     },
     servers:
       configs.env === "production"
@@ -38,6 +48,12 @@ export const swaggerOptions = {
           description: "User role for authorization",
           example: "USER",
         },
+        AccountStatus: {
+          type: "string",
+          enum: ["ACTIVE", "INACTIVE", "SUSPENDED"],
+          description: "Account status",
+          example: "ACTIVE",
+        },
         JWTToken: {
           type: "object",
           properties: {
@@ -48,8 +64,75 @@ export const swaggerOptions = {
             exp: { type: "integer", example: 1712346578 },
           },
         },
+        SubscriptionTier: {
+          type: "string",
+          enum: ["free", "basic", "pro", "master"],
+          description: "Subscription tier level",
+          example: "basic",
+        },
+        AssetType: {
+          type: "string",
+          enum: ["forex", "crypto", "stocks", "indices", "commodities"],
+          description: "Asset type for trading signals",
+          example: "forex",
+        },
+        SignalType: {
+          type: "string",
+          enum: ["long", "short"],
+          description: "Direction of the trading signal",
+          example: "long",
+        },
+        SignalTimeframe: {
+          type: "string",
+          enum: ["m1", "m5", "m15", "m30", "h1", "h4", "d1", "w1", "mn1"],
+          description: "Chart timeframe for the signal",
+          example: "h4",
+        },
+        SignalStatus: {
+          type: "string",
+          enum: ["active", "closed", "expired", "canceled"],
+          description: "Status of a trading signal",
+          example: "active",
+        },
+        NotificationType: {
+          type: "string",
+          enum: ["new_signal", "subscription_active", "subscription_expiring", "subscription_canceled", "payment_succeeded", "payment_failed", "master_approved", "master_rejected", "system_announcement"],
+          description: "Type of notification",
+          example: "new_signal",
+        },
+        PaginationMeta: {
+          type: "object",
+          properties: {
+            page: { type: "integer", example: 1 },
+            limit: { type: "integer", example: 20 },
+            total: { type: "integer", example: 150 },
+            totalPages: { type: "integer", example: 8 },
+          },
+        },
+        StandardResponse: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            message: { type: "string" },
+            data: { type: "object", nullable: true },
+            meta: { $ref: "#/components/schemas/PaginationMeta" },
+          },
+        },
       },
     },
+    tags: [
+      { name: "Authentication", description: "User registration, login, password management, and 2FA" },
+      { name: "Two-Factor Authentication", description: "TOTP-based two-factor authentication setup and management" },
+      { name: "Users", description: "User profile management and admin user operations" },
+      { name: "Upload", description: "File upload to S3/local storage" },
+      { name: "Subscriptions", description: "Platform subscription plans, checkout, and Stripe payment management" },
+      { name: "Signals", description: "Trading signal creation, management, and viewing" },
+      { name: "Masters", description: "Master Trader profiles, approval workflow, and performance stats" },
+      { name: "Masters (Admin)", description: "Admin operations for managing Master Traders" },
+      { name: "Follow", description: "Follow/unfollow Master Traders" },
+      { name: "Notifications", description: "User notification management" },
+      { name: "Admin", description: "Admin dashboard — analytics, broadcasts, role management, payment logs" },
+    ],
   },
   // Don't scan files - use manual swagger docs instead
   // This prevents EISDIR errors and improves performance

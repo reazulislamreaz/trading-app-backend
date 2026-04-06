@@ -4,11 +4,13 @@ interface IResponse<T> {
   statusCode: number;
   message: string;
   data?: T;
+  unreadCount?: number;
   meta?: {
     page?: number;
     limit?: number;
     skip?: number;
     total?: number;
+    totalPages?: number;
   };
 }
 
@@ -17,6 +19,7 @@ const manageResponse = <T>(res: Response, payload: IResponse<T>) => {
     success: payload.success,
     message: payload.message,
     data: payload.data || undefined || null,
+    unreadCount: payload.unreadCount,
     meta: payload.meta || undefined || null,
   });
 };

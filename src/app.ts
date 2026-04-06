@@ -28,8 +28,12 @@ app.use("/uploads", express.static(uploadDir));
 app.use(helmet()); // Add security headers
 
 // CORS configuration
+const corsOrigins = configs.allowed_origins
+  ? configs.allowed_origins.split(',').filter(Boolean)
+  : [configs.jwt.front_end_url || 'http://localhost:5000'];
+
 app.use(cors({
-    origin: configs.allowed_origins?.split(',') || configs.jwt.front_end_url || 'http://localhost:5000' ,
+    origin: corsOrigins.length > 0 ? corsOrigins : 'http://localhost:5000',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -52,8 +56,8 @@ app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
-// Trust proxy for correct client IP behind reverse proxy
-// app.set('trust proxy', true);
+// Trust proxy for correct client IP behind reverse proxy (Nginx, etc.)
+app.set('trust proxy', true);
 
 app.use("/api/v1", appRouter);
 

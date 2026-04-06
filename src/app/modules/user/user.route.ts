@@ -6,16 +6,18 @@ import { Router } from "express";
 
 const userRoute = Router();
 
+// Profile management (any authenticated user)
 userRoute.patch(
   "/update-profile",
-  auth("ADMIN", "USER"),
+  auth("ADMIN", "USER", "MASTER"),
   RequestValidator(user_validations.update_user),
   user_controllers.update_profile,
 );
-userRoute.get("/", auth("ADMIN","USER","MASTER"), user_controllers.get_all_users);
 
+// Admin-only routes
+userRoute.get("/", auth("ADMIN"), user_controllers.get_all_users);
 userRoute.get("/:id", auth("ADMIN"), user_controllers.get_single_user);
-
 userRoute.patch("/suspend/:id", auth("ADMIN"), user_controllers.suspend_user);
+userRoute.patch("/activate/:id", auth("ADMIN"), user_controllers.activate_user);
 
 export default userRoute;

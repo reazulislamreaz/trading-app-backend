@@ -50,9 +50,23 @@ const suspend_user = catchAsync(async (req, res) => {
   });
 });
 
+const activate_user = catchAsync(async (req, res) => {
+  const { id } = req.params;
+
+  const result = await user_services.activate_user_from_db(id as string);
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "User activated successfully",
+    data: result,
+  });
+});
+
 export const user_controllers = {
   update_profile,
   get_all_users,
   get_single_user,
   suspend_user,
+  activate_user,
 };

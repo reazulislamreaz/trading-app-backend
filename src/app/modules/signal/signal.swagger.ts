@@ -1,0 +1,256 @@
+export const signalSwaggerDocs = {
+  "/api/v1/signals": {
+    get: {
+      tags: ["Signals"],
+      summary: "List all signals (public)",
+      description: "Get paginated list of signals with optional filters. Active signals shown by default.",
+      parameters: [
+        { name: "page", in: "query", schema: { type: "integer", default: 1 } },
+        { name: "limit", in: "query", schema: { type: "integer", default: 20, maximum: 100 } },
+        { name: "assetType", in: "query", schema: { type: "string", enum: ["forex", "crypto", "stocks", "indices", "commodities"] } },
+        { name: "signalType", in: "query", schema: { type: "string", enum: ["long", "short"] } },
+        { name: "status", in: "query", schema: { type: "string", enum: ["active", "closed", "expired", "canceled"] } },
+        { name: "isPremium", in: "query", schema: { type: "boolean" } },
+        { name: "authorId", in: "query", schema: { type: "string" }, description: "Filter by Master Trader ID" },
+      ],
+      responses: {
+        200: {
+          description: "Signals retrieved successfully",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  success: { type: "boolean", example: true },
+                  message: { type: "string", example: "Signals retrieved successfully" },
+                  data: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        _id: { type: "string" },
+                        title: { type: "string", example: "EUR/USD Bullish Breakout" },
+                        symbol: { type: "string", example: "EURUSD" },
+                        assetType: { type: "string", example: "forex" },
+                        signalType: { type: "string", example: "long" },
+                        timeframe: { type: "string", example: "h4" },
+                        entryPrice: { type: "number", example: 1.085 },
+                        stopLoss: { type: "number", example: 1.082 },
+                        takeProfit1: { type: "number", example: 1.09 },
+                        takeProfit2: { type: "number", example: 1.093 },
+                        takeProfit3: { type: "number", example: 1.097 },
+                        status: { type: "string", example: "active" },
+                        isPremium: { type: "boolean", example: false },
+                        isFeatured: { type: "boolean", example: true },
+                        viewCount: { type: "integer", example: 342 },
+                        likeCount: { type: "integer", example: 28 },
+                        authorId: {
+                          type: "object",
+                          properties: {
+                            name: { type: "string" },
+                            userProfileUrl: { type: "string" },
+                          },
+                        },
+                        createdAt: { type: "string", format: "date-time" },
+                      },
+                    },
+                  },
+                  meta: {
+                    type: "object",
+                    properties: {
+                      page: { type: "integer" },
+                      limit: { type: "integer" },
+                      total: { type: "integer" },
+                      totalPages: { type: "integer" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    post: {
+      tags: ["Signals"],
+      summary: "Create a new signal",
+      description: "Create a trading signal. Requires MASTER role and approved Master profile.",
+      security: [{ bearerAuth: [] }],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["title", "assetType", "symbol", "signalType", "timeframe", "entryPrice"],
+              properties: {
+                title: { type: "string", minLength: 3, maxLength: 255, example: "EUR/USD Bullish Breakout" },
+                description: { type: "string", maxLength: 5000, example: "Strong bullish momentum detected..." },
+                assetType: { type: "string", enum: ["forex", "crypto", "stocks", "indices", "commodities"], example: "forex" },
+                symbol: { type: "string", maxLength: 20, example: "EURUSD" },
+                signalType: { type: "string", enum: ["long", "short"], example: "long" },
+                timeframe: { type: "string", enum: ["m1", "m5", "m15", "m30", "h1", "h4", "d1", "w1", "mn1"], example: "h4" },
+                entryPrice: { type: "number", positive: true, example: 1.085 },
+                entryNotes: { type: "string", maxLength: 1000, example: "Entry on H4 candle close above resistance" },
+                stopLoss: { type: "number", nullable: true, example: 1.082 },
+                takeProfit1: { type: "number", nullable: true, example: 1.09 },
+                takeProfit2: { type: "number", nullable: true, example: 1.093 },
+                takeProfit3: { type: "number", nullable: true, example: 1.097 },
+                isPremium: { type: "boolean", default: false, example: true },
+                tags: { type: "array", items: { type: "string" }, maxItems: 10, example: ["breakout", "eurusd"] },
+                externalChartUrl: { type: "string", format: "uri", example: "https://www.tradingview.com/chart/..." },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        201: { description: "Signal created successfully" },
+        400: { description: "Validation error" },
+        403: { description: "Only approved Master Traders can create signals" },
+      },
+    },
+  },
+
+  "/api/v1/signals/{id}": {
+    get: {
+      tags: ["Signals"],
+      summary: "Get single signal",
+      description: "Get details of a specific signal by ID.",
+      parameters: [
+        { name: "id", in: "path", required: true, schema: { type: "string" }, description: "Signal ID" },
+      ],
+      responses: {
+        200: { description: "Signal retrieved successfully" },
+        400: { description: "Invalid signal ID" },
+        404: { description: "Signal not found" },
+      },
+    },
+    patch: {
+      tags: ["Signals"],
+      summary: "Update a signal",
+      description: "Update your own signal. Only active signals can be updated.",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: "id", in: "path", required: true, schema: { type: "string" } },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              properties: {
+                title: { type: "string", example: "Updated EUR/USD Signal" },
+                description: { type: "string" },
+                stopLoss: { type: "number", example: 1.081 },
+                takeProfit1: { type: "number", example: 1.091 },
+                tags: { type: "array", items: { type: "string" } },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        200: { description: "Signal updated successfully" },
+        403: { description: "You can only update your own signals" },
+        404: { description: "Signal not found" },
+      },
+    },
+    delete: {
+      tags: ["Signals"],
+      summary: "Delete a signal",
+      description: "Soft-delete your own signal (sets status to canceled).",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: "id", in: "path", required: true, schema: { type: "string" } },
+      ],
+      responses: {
+        200: { description: "Signal deleted" },
+        403: { description: "You can only delete your own signals" },
+        404: { description: "Signal not found" },
+      },
+    },
+  },
+
+  "/api/v1/signals/{id}/close": {
+    patch: {
+      tags: ["Signals"],
+      summary: "Close a signal",
+      description: "Close an active signal with optional PnL and closing notes. Updates master win/loss stats.",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: "id", in: "path", required: true, schema: { type: "string" } },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              properties: {
+                resultPnl: { type: "number", nullable: true, example: 2.5, description: "Actual profit/loss percentage. Positive = win, negative = loss." },
+                closeNotes: { type: "string", maxLength: 1000, example: "Hit TP2 target, closed remaining position manually" },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        200: { description: "Signal closed successfully" },
+        400: { description: "Invalid input" },
+        403: { description: "You can only close your own signals" },
+        404: { description: "Signal not found" },
+      },
+    },
+  },
+
+  "/api/v1/signals/my/signals": {
+    get: {
+      tags: ["Signals"],
+      summary: "Get my signals",
+      description: "Get signals created by the authenticated Master Trader.",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: "page", in: "query", schema: { type: "integer", default: 1 } },
+        { name: "limit", in: "query", schema: { type: "integer", default: 20 } },
+        { name: "status", in: "query", schema: { type: "string", enum: ["active", "closed", "expired", "canceled"] } },
+      ],
+      responses: {
+        200: { description: "My signals retrieved successfully" },
+        401: { description: "Unauthorized" },
+      },
+    },
+  },
+
+  "/api/v1/signals/featured/{id}": {
+    patch: {
+      tags: ["Signals"],
+      summary: "Toggle signal featured status (Admin)",
+      description: "Admin only. Feature or un-feature a signal for homepage highlighting.",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: "id", in: "path", required: true, schema: { type: "string" } },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["isFeatured"],
+              properties: {
+                isFeatured: { type: "boolean", example: true },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        200: { description: "Signal featured status updated" },
+        403: { description: "Admin access required" },
+        404: { description: "Signal not found" },
+      },
+    },
+  },
+};

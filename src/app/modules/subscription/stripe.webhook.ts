@@ -12,6 +12,32 @@ const stripe = new Stripe(configs.stripe.secretKey!, {
 });
 const webhookSecret = configs.stripe.webhookSecret;
 
+// Processed event IDs to prevent duplicate processing within this process lifetime
+// For production-scale, use Redis for cross-process idempotency
+const processedEvents = new Map<string, number>();
+const EVENT_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+/**
+ * Check if a Stripe event has already been processed (idempotency)
+ */
+function isEventProcessed(eventId: string): boolean {
+  const cached = processedEvents.get(eventId);
+  if (cached && Date.now() - cached < EVENT_CACHE_TTL) {
+    return true;
+  }
+  // Clean expired entries
+  for (const [key, timestamp] of processedEvents.entries()) {
+    if (Date.now() - timestamp > EVENT_CACHE_TTL) {
+      processedEvents.delete(key);
+    }
+  }
+  return false;
+}
+
+function markEventProcessed(eventId: string) {
+  processedEvents.set(eventId, Date.now());
+}
+
 export const handleStripeWebhook = async (req: Request, res: Response) => {
   const sig = req.headers['stripe-signature'] as string;
 
@@ -24,6 +50,13 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
 
     event = stripe.webhooks.constructEvent(body, sig, webhookSecret!);
     logger.info(`📥 Webhook received: ${event.type} (ID: ${event.id})`);
+
+    // Idempotency check - reject already processed events
+    if (isEventProcessed(event.id)) {
+      logger.warn(`⚠️  Duplicate event detected, skipping: ${event.id}`);
+      res.json({ received: true });
+      return;
+    }
   } catch (err: any) {
     logger.error(`❌ Webhook signature verification failed: ${err.message}`);
     res.status(400).json({
@@ -68,6 +101,9 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
         logger.warn(`⚠️  Unhandled event type: ${event.type}`);
     }
 
+    // Mark event as processed after successful handling
+    markEventProcessed(event.id);
+
     res.json({ received: true });
   } catch (error: any) {
     logger.error(`❌ Error handling webhook event ${event.type}:`, error);
@@ -77,6 +113,20 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
     });
   }
 };
+
+/**
+ * Map Stripe price ID to our internal plan ID
+ * Uses the stripePriceId field from subscription_plans collection
+ */
+async function mapPriceIdToPlanId(stripePriceId: string): Promise<string | null> {
+  const { SubscriptionPlan_Model } = await import('./subscription.plans');
+  const plan = await SubscriptionPlan_Model.findOne({ stripePriceId, isActive: true });
+  if (!plan) {
+    logger.error(`❌ No matching plan found for Stripe price ID: ${stripePriceId}`);
+    return null;
+  }
+  return plan.planId;
+}
 
 // Handler Functions
 async function handleCheckoutCompleted(session: any) {
@@ -108,6 +158,7 @@ async function handleCheckoutCompleted(session: any) {
         autoRenew: true,
         nextBillingDate: new Date(stripeSubscription.current_period_end * 1000),
         signalsUsed: 0, // Reset usage for new subscription
+        lastPaymentDate: new Date(),
       },
       { upsert: true, new: true }
     );
@@ -137,6 +188,15 @@ async function handleInvoicePaid(invoice: any) {
       return;
     }
 
+    // Check if payment intent already recorded (idempotency at DB level)
+    if (paymentIntentId) {
+      const existingPayment = await Payment_Model.findOne({ stripePaymentIntentId: paymentIntentId });
+      if (existingPayment) {
+        logger.info(`ℹ️  Payment already recorded for intent: ${paymentIntentId}`);
+        return;
+      }
+    }
+
     const subscription = await Subscription_Model.findOne({ stripeSubscriptionId: subscriptionId });
     if (!subscription) {
       logger.error('❌ Subscription not found for invoice:', subscriptionId);
@@ -147,7 +207,7 @@ async function handleInvoicePaid(invoice: any) {
     await Payment_Model.create({
       accountId: subscription.accountId,
       subscriptionId: subscription._id,
-      stripePaymentIntentId: paymentIntentId || '',
+      stripePaymentIntentId: paymentIntentId || `invoice_${invoice.id}`,
       stripeInvoiceId: invoice.id,
       amount: invoice.amount_paid,
       currency: invoice.currency,
@@ -161,13 +221,16 @@ async function handleInvoicePaid(invoice: any) {
     await Subscription_Model.findByIdAndUpdate(subscription._id, {
       status: 'active',
       lastPaymentDate: new Date(),
-      nextBillingDate: invoice.lines?.data[0] ? new Date(invoice.lines.data[0].period.end * 1000) : null,
+      nextBillingDate: new Date(invoice.lines?.data[0]?.period.end * 1000) || null,
+      currentPeriodStart: new Date(invoice.period_start * 1000),
+      currentPeriodEnd: new Date(invoice.period_end * 1000),
+      signalsUsed: 0, // Reset usage on renewal
     });
 
     // Update account
     await Account_Model.findByIdAndUpdate(subscription.accountId, {
       subscriptionStatus: 'active',
-      subscriptionExpiresAt: invoice.lines?.data[0] ? new Date(invoice.lines.data[0].period.end * 1000) : null,
+      subscriptionExpiresAt: new Date(invoice.period_end * 1000),
     });
 
     logger.info(`✅ Payment recorded: ${paymentIntentId}, amount: ${invoice.amount_paid}`);
@@ -214,24 +277,32 @@ async function handleSubscriptionUpdated(stripeSub: any) {
       return;
     }
 
-    const updates: any = {
+    const updates: Record<string, unknown> = {
       status: stripeSub.status,
       cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
       currentPeriodStart: new Date(stripeSub.current_period_start * 1000),
       currentPeriodEnd: new Date(stripeSub.current_period_end * 1000),
     };
 
-    // If plan changed (check price ID)
+    // If plan/price changed (check price ID)
     const newPriceId = stripeSub.items?.data[0]?.price.id;
-    if (newPriceId && newPriceId !== subscription.planId) {
-      // Map Stripe price ID to plan ID
-      // You may need a more robust mapping function based on your Stripe price IDs
-      updates.planId = newPriceId.replace('price_', '').replace('_monthly', '_monthly');
+    if (newPriceId) {
+      // Map Stripe price ID to internal plan ID via database lookup
+      const planId = await mapPriceIdToPlanId(newPriceId);
+      if (planId) {
+        updates.planId = planId;
+
+        // Also update account tier based on new plan
+        const tier = planId.split('_')[0];
+        await Account_Model.findByIdAndUpdate(subscription.accountId, {
+          subscriptionTier: tier,
+        });
+      }
     }
 
     await Subscription_Model.findByIdAndUpdate(subscription._id, updates);
 
-    // Update account
+    // Update account status and expiry
     await Account_Model.findByIdAndUpdate(subscription.accountId, {
       subscriptionStatus: stripeSub.status,
       subscriptionExpiresAt: new Date(stripeSub.current_period_end * 1000),
@@ -271,7 +342,7 @@ async function handleSubscriptionDeleted(stripeSub: any) {
 
 async function handlePaymentSucceeded(paymentIntent: any) {
   try {
-    // Handle one-time payments (if any)
+    // Handle one-time payments (if any) - subscription payments are handled via invoice.paid
     logger.info(`💰 Payment succeeded: ${paymentIntent.id}`);
   } catch (error) {
     logger.error('❌ Error in handlePaymentSucceeded:', error);
@@ -290,7 +361,7 @@ async function handleChargeRefunded(charge: any) {
     await Payment_Model.findByIdAndUpdate(payment._id, {
       status: 'refunded',
       refundedAt: new Date(),
-      refundedAmount: charge.amount_refunded / 100, // Convert from cents
+      refundedAmount: charge.amount_refunded,
     });
 
     logger.info(`💸 Payment refunded: ${charge.id}`);
