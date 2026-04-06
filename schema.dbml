@@ -1,0 +1,526 @@
+// ============================================================
+// Trading Signal SaaS Platform - Complete Database Schema
+// Generated for dbdiagram.io (PostgreSQL syntax)
+// ============================================================
+// BUSINESS RULES:
+// - Users subscribe to the PLATFORM and pay the Admin/Platform
+// - Masters are signal/content providers only (NO Stripe, NO earnings)
+// - All subscription payments go to Admin/Platform
+// - No revenue sharing, no master payouts, no withdrawals
+// ============================================================
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+Enum account_status {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+Enum user_role {
+  USER
+  ADMIN
+  MASTER
+}
+
+Enum subscription_status {
+  active
+  canceled
+  past_due
+  trialing
+  paused
+  expired
+}
+
+Enum subscription_tier {
+  free
+  basic
+  pro
+  master
+}
+
+Enum billing_interval {
+  month
+  year
+}
+
+Enum payment_status {
+  succeeded
+  failed
+  pending
+  refunded
+}
+
+// Signal-related enums
+Enum signal_type {
+  long
+  short
+}
+
+Enum signal_status {
+  active
+  closed
+  expired
+  canceled
+}
+
+Enum signal_timeframe {
+  m1
+  m5
+  m15
+  m30
+  h1
+  h4
+  d1
+  w1
+  mn1
+}
+
+Enum asset_type {
+  forex
+  crypto
+  stocks
+  indices
+  commodities
+}
+
+Enum notification_type {
+  new_signal
+  subscription_active
+  subscription_expiring
+  subscription_canceled
+  payment_succeeded
+  payment_failed
+  master_approved
+  system_announcement
+}
+
+// ============================================================
+// accounts - All users (USER, MASTER, ADMIN share one table)
+// ============================================================
+Table accounts {
+  id uuid [pk, default: `gen_random_uuid()`]
+  name varchar(255) [not null]
+  email varchar(255) [unique, not null]
+  password varchar(255) [not null, note: 'bcrypt hashed, not selected by default']
+  role user_role [default: 'USER', not null]
+  account_status account_status [default: 'ACTIVE', not null]
+  is_verified boolean [default: false, not null]
+  is_deleted boolean [default: false, not null]
+  user_profile_url varchar(500) [default: '']
+
+  // Stripe integration (only for USER role subscribers)
+  stripe_customer_id varchar(255) [unique, note: 'Stripe customer ID for subscribers']
+  subscription_status varchar(20) [default: 'none', note: 'none | trialing | active | canceled | past_due | expired']
+  subscription_tier subscription_tier [default: 'free', not null]
+  subscription_expires_at timestamp
+  trial_used boolean [default: false, not null]
+
+  // Email verification
+  verification_code varchar(10) [note: 'not selected by default']
+  verification_code_expires timestamp [note: 'not selected by default']
+
+  // Password reset
+  reset_password_code varchar(10) [note: 'not selected by default']
+  reset_password_expire timestamp [note: 'not selected by default']
+
+  // Two-factor authentication
+  two_factor_enabled boolean [default: false, not null]
+  two_factor_secret varchar(255) [note: 'TOTP secret, not selected by default']
+  two_factor_backup_codes jsonb [note: 'array of backup codes, not selected by default']
+
+  // Security
+  last_password_change timestamp [default: `now()`]
+  login_attempts integer [default: 0, not null]
+  locked_until timestamp [note: 'account lockout expiry, not selected by default']
+
+  created_at timestamp [default: `now()`, not null]
+  updated_at timestamp [default: `now()`, not null]
+}
+
+// ============================================================
+// masters - Extended profile for Master Traders (signal providers)
+// Masters do NOT receive money, do NOT have Stripe accounts
+// They are content providers approved by Admin
+// ============================================================
+Table masters {
+  id uuid [pk, default: `gen_random_uuid()`]
+  account_id uuid [unique, not null, ref: > accounts.id]
+  bio text [note: 'Trading experience, strategy, background']
+  specialties jsonb [default: '[]', note: 'array of specializations e.g., ["forex", "scalping"]']
+  years_of_experience integer [default: 0, not null]
+  is_approved boolean [default: false, not null, note: 'Admin must approve before posting signals']
+  approved_at timestamp [note: 'When Admin approved this master']
+  approved_by uuid [ref: > accounts.id, note: 'Admin who approved']
+
+  // Reputation metrics (computed from signals)
+  total_signals integer [default: 0, not null]
+  winning_signals integer [default: 0, not null]
+  losing_signals integer [default: 0, not null]
+  win_rate decimal(5, 2) [default: 0.00, note: 'percentage 0.00-100.00']
+  avg_pnl decimal(10, 2) [note: 'average profit/loss percentage']
+  follower_count integer [default: 0, not null]
+
+  // Visibility
+  is_featured boolean [default: false, not null, note: 'featured on leaderboard by Admin']
+  display_order integer [default: 0, not null, note: 'Admin-controlled ordering']
+
+  created_at timestamp [default: `now()`, not null]
+  updated_at timestamp [default: `now()`, not null]
+}
+
+// ============================================================
+// token_blacklist - JWT token blacklist with auto-expiry
+// ============================================================
+Table token_blacklist {
+  id uuid [pk, default: `gen_random_uuid()`]
+  token varchar(1000) [unique, not null, note: 'full JWT token string']
+  expires_at timestamp [not null, note: 'TTL - auto-deleted after this time']
+
+  created_at timestamp [default: `now()`, not null]
+  updated_at timestamp [default: `now()`, not null]
+}
+
+// ============================================================
+// subscription_plans - Platform subscription plan definitions
+// Plans are managed by Admin, all revenue goes to Platform
+// ============================================================
+Table subscription_plans {
+  id uuid [pk, default: `gen_random_uuid()`]
+  plan_id varchar(50) [unique, not null, note: 'e.g., free, basic_monthly, pro_yearly']
+  name varchar(100) [not null]
+  description text [not null]
+  price integer [not null, note: 'price in cents (e.g., 2900 = $29.00)']
+  currency varchar(3) [default: 'usd', not null]
+  interval billing_interval [default: 'month', not null]
+  stripe_product_id varchar(255) [note: 'Stripe Product ID']
+  stripe_price_id varchar(255) [note: 'Stripe Price ID']
+  features jsonb [not null, note: 'array of feature descriptions']
+  signal_limit integer [default: -1, not null, note: '-1 means unlimited signals per billing cycle']
+  media_access boolean [default: false, not null]
+  priority_support boolean [default: false, not null]
+  is_active boolean [default: true, not null]
+  tier subscription_tier [default: 'basic', not null]
+  synced_to_stripe boolean [default: false, not null]
+
+  created_at timestamp [default: `now()`, not null]
+  updated_at timestamp [default: `now()`, not null]
+}
+
+// ============================================================
+// user_subscriptions - User subscription to the platform
+// Only USER role subscribes. All payments go to Admin/Platform.
+// ============================================================
+Table user_subscriptions {
+  id uuid [pk, default: `gen_random_uuid()`]
+  account_id uuid [not null, ref: > accounts.id]
+  plan_id varchar(50) [not null, ref: > subscription_plans.plan_id, note: 'references plan_id, not UUID id']
+  stripe_subscription_id varchar(255) [unique, not null]
+  status subscription_status [default: 'active', not null]
+  current_period_start timestamp [not null]
+  current_period_end timestamp [not null]
+  cancel_at_period_end boolean [default: false, not null]
+  trial_ends_at timestamp
+  signals_used integer [default: 0, not null]
+  auto_renew boolean [default: true, not null]
+  last_payment_date timestamp
+  next_billing_date timestamp
+
+  created_at timestamp [default: `now()`, not null]
+  updated_at timestamp [default: `now()`, not null]
+}
+
+// ============================================================
+// payments - All subscription payment transactions
+// All money flows to Admin/Platform Stripe account
+// ============================================================
+Table payments {
+  id uuid [pk, default: `gen_random_uuid()`]
+  account_id uuid [not null, ref: > accounts.id]
+  subscription_id uuid [not null, ref: > user_subscriptions.id]
+  stripe_payment_intent_id varchar(255) [unique, not null]
+  stripe_invoice_id varchar(255)
+  amount integer [not null, note: 'amount in cents']
+  currency varchar(3) [default: 'usd', not null]
+  status payment_status [default: 'pending', not null]
+  payment_method varchar(50) [default: 'card']
+  description text [not null]
+  invoice_url varchar(500)
+  refunded_at timestamp
+  refunded_amount integer [note: 'refunded amount in cents']
+  metadata jsonb [default: '{}', note: 'flexible key-value store']
+
+  created_at timestamp [default: `now()`, not null]
+  updated_at timestamp [default: `now()`, not null]
+}
+
+// ============================================================
+// signals - Trading signals published by approved Master Traders
+// Masters create signals, Users consume them based on subscription
+// ============================================================
+Table signals {
+  id uuid [pk, default: `gen_random_uuid()`]
+  author_id uuid [not null, ref: > accounts.id, note: 'Master Trader who published this signal']
+  title varchar(255) [not null]
+  description text [note: 'Detailed analysis and reasoning']
+  asset_type asset_type [not null]
+  symbol varchar(20) [not null, note: 'e.g., EUR/USD, BTC/USDT, AAPL']
+  signal_type signal_type [not null]
+  timeframe signal_timeframe [not null]
+
+  // Entry details
+  entry_price decimal(18, 8) [not null]
+  entry_notes text [note: 'Additional entry instructions']
+
+  // Exit targets
+  stop_loss decimal(18, 8)
+  take_profit_1 decimal(18, 8)
+  take_profit_2 decimal(18, 8)
+  take_profit_3 decimal(18, 8)
+
+  // Signal state
+  status signal_status [default: 'active', not null]
+  is_premium boolean [default: false, not null, note: 'true = requires paid subscription to view']
+  is_featured boolean [default: false, not null, note: 'highlighted by Admin']
+
+  // Performance tracking
+  result_pnl decimal(10, 2) [note: 'Actual realized profit/loss percentage']
+  closed_at timestamp [note: 'When signal was closed']
+  close_notes text [note: 'Reason for closing']
+
+  // Engagement counters (denormalized for fast queries)
+  view_count integer [default: 0, not null]
+  like_count integer [default: 0, not null]
+  bookmark_count integer [default: 0, not null]
+  comment_count integer [default: 0, not null]
+
+  // Metadata
+  tags jsonb [default: '[]', note: 'array of string tags']
+  external_chart_url varchar(500) [note: 'Link to external chart (e.g., TradingView)']
+
+  created_at timestamp [default: `now()`, not null]
+  updated_at timestamp [default: `now()`, not null]
+}
+
+// ============================================================
+// signal_media - Images, videos, and charts attached to signals
+// ============================================================
+Table signal_media {
+  id uuid [pk, default: `gen_random_uuid()`]
+  signal_id uuid [not null, ref: > signals.id]
+  media_type varchar(20) [not null, note: 'image | video | document']
+  mime_type varchar(100) [not null, note: 'e.g., image/png, video/mp4']
+  file_url varchar(500) [not null, note: 'S3/Cloudinary URL']
+  thumbnail_url varchar(500) [note: 'Thumbnail for images/videos']
+  file_size integer [not null, note: 'file size in bytes']
+  caption varchar(255) [note: 'Optional description']
+  sort_order integer [default: 0, not null, note: 'display order']
+
+  created_at timestamp [default: `now()`, not null]
+  updated_at timestamp [default: `now()`, not null]
+}
+
+// ============================================================
+// signal_views - Track who viewed a signal (analytics + billing)
+// Each view may count against subscription signal limit
+// ============================================================
+Table signal_views {
+  id uuid [pk, default: `gen_random_uuid()`]
+  signal_id uuid [not null, ref: > signals.id]
+  account_id uuid [not null, ref: > accounts.id]
+  viewed_at timestamp [default: `now()`, not null]
+
+  created_at timestamp [default: `now()`, not null]
+}
+
+// ============================================================
+// signal_likes - User engagement (like/unlike)
+// ============================================================
+Table signal_likes {
+  id uuid [pk, default: `gen_random_uuid()`]
+  signal_id uuid [not null, ref: > signals.id]
+  account_id uuid [not null, ref: > accounts.id]
+
+  created_at timestamp [default: `now()`, not null]
+}
+
+// ============================================================
+// signal_bookmarks - Save signals for later viewing
+// ============================================================
+Table signal_bookmarks {
+  id uuid [pk, default: `gen_random_uuid()`]
+  signal_id uuid [not null, ref: > signals.id]
+  account_id uuid [not null, ref: > accounts.id]
+  notes text [note: 'Personal notes on this signal']
+
+  created_at timestamp [default: `now()`, not null]
+  updated_at timestamp [default: `now()`, not null]
+}
+
+// ============================================================
+// signal_comments - Discussion threads on signals
+// ============================================================
+Table signal_comments {
+  id uuid [pk, default: `gen_random_uuid()`]
+  signal_id uuid [not null, ref: > signals.id]
+  account_id uuid [not null, ref: > accounts.id]
+  parent_id uuid [ref: > signal_comments.id, note: 'null = top-level, set = reply to comment']
+  content text [not null]
+  is_edited boolean [default: false, not null]
+
+  created_at timestamp [default: `now()`, not null]
+  updated_at timestamp [default: `now()`, not null]
+}
+
+// ============================================================
+// signal_analytics - Daily aggregated performance per Master
+// Computed by cron job for leaderboard and Admin dashboards
+// ============================================================
+Table signal_analytics {
+  id uuid [pk, default: `gen_random_uuid()`]
+  author_id uuid [not null, ref: > accounts.id, note: 'Master Trader']
+  date date [not null, note: 'analytics for this date']
+  signals_published integer [default: 0, not null]
+  signals_closed integer [default: 0, not null]
+  winning_signals integer [default: 0, not null]
+  losing_signals integer [default: 0, not null]
+  avg_pnl decimal(10, 2) [note: 'average profit/loss percentage']
+  total_views integer [default: 0, not null]
+  total_likes integer [default: 0, not null]
+  total_bookmarks integer [default: 0, not null]
+  follower_count integer [default: 0, not null]
+
+  created_at timestamp [default: `now()`, not null]
+}
+
+// ============================================================
+// follows - Users follow Master Traders
+// ============================================================
+Table follows {
+  id uuid [pk, default: `gen_random_uuid()`]
+  follower_id uuid [not null, ref: > accounts.id, note: 'user who is following']
+  master_id uuid [not null, ref: > accounts.id, note: 'Master Trader being followed']
+  notifications_enabled boolean [default: true, not null, note: 'receive notifications for new signals']
+
+  created_at timestamp [default: `now()`, not null]
+}
+
+// ============================================================
+// notifications - Platform notifications for all users
+// ============================================================
+Table notifications {
+  id uuid [pk, default: `gen_random_uuid()`]
+  account_id uuid [not null, ref: > accounts.id]
+  type notification_type [not null]
+  title varchar(255) [not null]
+  message text [not null]
+  is_read boolean [default: false, not null]
+  link varchar(500) [note: 'optional deep link to related page']
+  data jsonb [default: '{}', note: 'additional notification payload']
+
+  created_at timestamp [default: `now()`, not null]
+}
+
+// ============================================================
+// RELATIONSHIPS
+// ============================================================
+
+// Subscription & Payment relationships
+Ref: user_subscriptions.account_id > accounts.id
+Ref: user_subscriptions.plan_id > subscription_plans.plan_id
+Ref: payments.account_id > accounts.id
+Ref: payments.subscription_id > user_subscriptions.id
+
+// Master profile
+Ref: masters.account_id > accounts.id
+Ref: masters.approved_by > accounts.id
+
+// Signal relationships
+Ref: signals.author_id > accounts.id
+Ref: signal_media.signal_id > signals.id
+Ref: signal_views.signal_id > signals.id
+Ref: signal_views.account_id > accounts.id
+Ref: signal_likes.signal_id > signals.id
+Ref: signal_likes.account_id > accounts.id
+Ref: signal_bookmarks.signal_id > signals.id
+Ref: signal_bookmarks.account_id > accounts.id
+Ref: signal_comments.signal_id > signals.id
+Ref: signal_comments.account_id > accounts.id
+Ref: signal_comments.parent_id > signal_comments.id
+Ref: signal_analytics.author_id > accounts.id
+
+// Social relationships
+Ref: follows.follower_id > accounts.id
+Ref: follows.master_id > accounts.id
+
+// Notifications
+Ref: notifications.account_id > accounts.id
+
+// ============================================================
+// UNIQUE CONSTRAINTS & INDEXES (documented for reference)
+// ============================================================
+
+// accounts:
+//   UNIQUE: email, stripe_customer_id
+//   INDEX: account_status, role, two_factor_enabled
+//   COMPOUND: (email, is_deleted), (email, account_status)
+
+// masters:
+//   UNIQUE: account_id
+//   INDEX: is_approved, is_featured
+
+// token_blacklist:
+//   UNIQUE: token
+//   TTL: expires_at (auto-delete after expiry)
+
+// subscription_plans:
+//   UNIQUE: plan_id
+//   INDEX: is_active, tier, synced_to_stripe
+
+// user_subscriptions:
+//   UNIQUE: stripe_subscription_id
+//   COMPOUND: (account_id, status)
+//   INDEX: stripe_customer_id, plan_id, current_period_end
+
+// payments:
+//   UNIQUE: stripe_payment_intent_id
+//   COMPOUND: (account_id, status)
+//   INDEX: created_at DESC
+
+// signals:
+//   COMPOUND: (author_id, status), (author_id, created_at DESC)
+//   INDEX: asset_type, signal_type, status, is_premium, is_featured
+//   COMPOUND: (asset_type, status), (signal_type, status)
+//   INDEX: created_at DESC (feed ordering)
+
+// signal_media:
+//   INDEX: signal_id, sort_order
+
+// signal_views:
+//   COMPOUND: (signal_id, account_id) - dedup check
+//   COMPOUND: (account_id, viewed_at) - usage tracking
+
+// signal_likes:
+//   UNIQUE: (signal_id, account_id) - prevent duplicate likes
+//   INDEX: signal_id (count queries)
+
+// signal_bookmarks:
+//   UNIQUE: (signal_id, account_id)
+//   INDEX: account_id (user bookmark list)
+
+// signal_comments:
+//   COMPOUND: (signal_id, created_at DESC) - feed ordering
+//   INDEX: account_id, parent_id
+
+// signal_analytics:
+//   UNIQUE: (author_id, date) - one row per master per day
+//   INDEX: date (leaderboard queries)
+
+// follows:
+//   UNIQUE: (follower_id, master_id) - prevent duplicate follows
+//   INDEX: master_id (follower count), follower_id (following count)
+
+// notifications:
+//   COMPOUND: (account_id, is_read, created_at DESC) - inbox query
