@@ -128,8 +128,8 @@ export const signalSwaggerDocs = {
     },
     patch: {
       tags: ["Signals"],
-      summary: "Update a signal",
-      description: "Update your own signal. Only active signals can be updated.",
+      summary: "Update or close a signal",
+      description: "Update your own signal. To close a signal, set `status: 'closed'` and provide `resultPnl`. This triggers master win/loss stats update.",
       security: [{ bearerAuth: [] }],
       parameters: [
         { name: "id", in: "path", required: true, schema: { type: "string" } },
@@ -146,13 +146,17 @@ export const signalSwaggerDocs = {
                 stopLoss: { type: "number", example: 1.081 },
                 takeProfit1: { type: "number", example: 1.091 },
                 tags: { type: "array", items: { type: "string" } },
+                status: { type: "string", enum: ["closed"], example: "closed", description: "Set to 'closed' to close the signal. Must include resultPnl." },
+                resultPnl: { type: "number", example: 2.5, description: "Required when closing. Profit/loss percentage. Positive = win." },
+                closeNotes: { type: "string", example: "Hit TP2 target" },
               },
             },
           },
         },
       },
       responses: {
-        200: { description: "Signal updated successfully" },
+        200: { description: "Signal updated or closed successfully" },
+        400: { description: "Invalid input or cannot update non-active signal" },
         403: { description: "You can only update your own signals" },
         404: { description: "Signal not found" },
       },
@@ -168,38 +172,6 @@ export const signalSwaggerDocs = {
       responses: {
         200: { description: "Signal deleted" },
         403: { description: "You can only delete your own signals" },
-        404: { description: "Signal not found" },
-      },
-    },
-  },
-
-  "/api/v1/signals/{id}/close": {
-    patch: {
-      tags: ["Signals"],
-      summary: "Close a signal",
-      description: "Close an active signal with optional PnL and closing notes. Updates master win/loss stats.",
-      security: [{ bearerAuth: [] }],
-      parameters: [
-        { name: "id", in: "path", required: true, schema: { type: "string" } },
-      ],
-      requestBody: {
-        required: true,
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                resultPnl: { type: "number", nullable: true, example: 2.5, description: "Actual profit/loss percentage. Positive = win, negative = loss." },
-                closeNotes: { type: "string", maxLength: 1000, example: "Hit TP2 target, closed remaining position manually" },
-              },
-            },
-          },
-        },
-      },
-      responses: {
-        200: { description: "Signal closed successfully" },
-        400: { description: "Invalid input" },
-        403: { description: "You can only close your own signals" },
         404: { description: "Signal not found" },
       },
     },
@@ -249,6 +221,80 @@ export const signalSwaggerDocs = {
       responses: {
         200: { description: "Signal featured status updated" },
         403: { description: "Admin access required" },
+        404: { description: "Signal not found" },
+      },
+    },
+  },
+
+  "/api/v1/signals/{id}/like": {
+    post: {
+      tags: ["Signals"],
+      summary: "Like a signal",
+      description: "Like a signal (increments likeCount and tracks contribution).",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: "id", in: "path", required: true, schema: { type: "string" } },
+      ],
+      responses: {
+        200: { description: "Signal liked successfully" },
+        404: { description: "Signal not found" },
+      },
+    },
+    delete: {
+      tags: ["Signals"],
+      summary: "Unlike a signal",
+      description: "Remove like from a signal (decrements likeCount).",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: "id", in: "path", required: true, schema: { type: "string" } },
+      ],
+      responses: {
+        200: { description: "Signal unliked successfully" },
+        404: { description: "Signal not found" },
+      },
+    },
+  },
+
+  "/api/v1/signals/{id}/bookmark": {
+    post: {
+      tags: ["Signals"],
+      summary: "Bookmark a signal",
+      description: "Bookmark a signal for later reference (increments bookmarkCount and tracks contribution).",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: "id", in: "path", required: true, schema: { type: "string" } },
+      ],
+      responses: {
+        200: { description: "Signal bookmarked successfully" },
+        404: { description: "Signal not found" },
+      },
+    },
+    delete: {
+      tags: ["Signals"],
+      summary: "Remove bookmark",
+      description: "Remove bookmark from a signal (decrements bookmarkCount).",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: "id", in: "path", required: true, schema: { type: "string" } },
+      ],
+      responses: {
+        200: { description: "Bookmark removed successfully" },
+        404: { description: "Signal not found" },
+      },
+    },
+  },
+
+  "/api/v1/signals/{id}/share": {
+    post: {
+      tags: ["Signals"],
+      summary: "Share a signal",
+      description: "Track a share action on a signal (contribution tracking).",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: "id", in: "path", required: true, schema: { type: "string" } },
+      ],
+      responses: {
+        200: { description: "Signal shared successfully" },
         404: { description: "Signal not found" },
       },
     },

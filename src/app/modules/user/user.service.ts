@@ -82,32 +82,19 @@ const get_single_user_from_db = async (id: string) => {
   return result;
 };
 
-const suspend_user_from_db = async (id: string) => {
+const update_user_status = async (id: string, status: 'ACTIVE' | 'SUSPENDED') => {
   if (!Types.ObjectId.isValid(id)) {
     throw new AppError("Invalid user ID", httpStatus.BAD_REQUEST);
   }
 
-  const result = await Account_Model.findByIdAndUpdate(
-    id,
-    { accountStatus: "SUSPENDED" },
-    { new: true },
-  ).select('-password -twoFactorSecret -twoFactorBackupCodes -verificationCode -verificationCodeExpires -resetPasswordCode -resetPasswordExpire -lockedUntil');
-
-  if (!result) {
-    throw new AppError("User not found", httpStatus.NOT_FOUND);
-  }
-
-  return result;
-};
-
-const activate_user_from_db = async (id: string) => {
-  if (!Types.ObjectId.isValid(id)) {
-    throw new AppError("Invalid user ID", httpStatus.BAD_REQUEST);
+  const validStatuses = ['ACTIVE', 'SUSPENDED'];
+  if (!validStatuses.includes(status)) {
+    throw new AppError("Invalid status. Must be 'ACTIVE' or 'SUSPENDED'", httpStatus.BAD_REQUEST);
   }
 
   const result = await Account_Model.findByIdAndUpdate(
     id,
-    { accountStatus: "ACTIVE" },
+    { accountStatus: status },
     { new: true },
   ).select('-password -twoFactorSecret -twoFactorBackupCodes -verificationCode -verificationCodeExpires -resetPasswordCode -resetPasswordExpire -lockedUntil');
 
@@ -122,6 +109,5 @@ export const user_services = {
   update_profile_into_db,
   get_all_users_from_db,
   get_single_user_from_db,
-  suspend_user_from_db,
-  activate_user_from_db,
+  update_user_status,
 };

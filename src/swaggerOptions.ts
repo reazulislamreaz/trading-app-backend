@@ -8,6 +8,9 @@ import { masterSwaggerDocs } from "./app/modules/master/master.swagger";
 import { followSwaggerDocs } from "./app/modules/follow/follow.swagger";
 import { notificationSwaggerDocs } from "./app/modules/notification/notification.swagger";
 import { adminSwaggerDocs } from "./app/modules/admin/admin.swagger";
+import { contributionSwaggerDocs } from "./app/modules/contribution/contribution.swagger";
+import { leaderboardSwaggerDocs } from "./app/modules/leaderboard/leaderboard.swagger";
+import { topTradersSwaggerDocs } from "./app/modules/top-traders/top_traders.swagger";
 
 export const swaggerOptions = {
   definition: {
@@ -27,6 +30,9 @@ export const swaggerOptions = {
       ...followSwaggerDocs,
       ...notificationSwaggerDocs,
       ...adminSwaggerDocs,
+      ...contributionSwaggerDocs,
+      ...leaderboardSwaggerDocs,
+      ...topTradersSwaggerDocs,
     },
     servers:
       configs.env === "production"
@@ -131,6 +137,9 @@ export const swaggerOptions = {
       { name: "Masters (Admin)", description: "Admin operations for managing Master Traders" },
       { name: "Follow", description: "Follow/unfollow Master Traders" },
       { name: "Notifications", description: "User notification management" },
+      { name: "Contributions", description: "User engagement tracking and top contributor rankings" },
+      { name: "Leaderboard", description: "Overall platform leaderboard with composite scoring" },
+      { name: "Top Traders", description: "Top Master Traders ranked by trading performance" },
       { name: "Admin", description: "Admin dashboard — analytics, broadcasts, role management, payment logs" },
     ],
   },

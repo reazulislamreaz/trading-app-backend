@@ -1,9 +1,10 @@
 import { AppError } from '../../utils/app_error';
 import httpStatus from 'http-status';
-import { Signal_Model } from './signal.schema';
+import { Signal_Model, SignalStatus } from './signal.schema';
 import { Master_Model } from '../master/master.schema';
 import { Account_Model } from '../auth/auth.schema';
 import { Types } from 'mongoose';
+import { contribution_services } from '../contribution/contribution.service';
 
 interface TCreateSignal {
   title: string;
@@ -100,6 +101,9 @@ const create_signal = async (accountId: string, data: TCreateSignal) => {
       { accountId },
       { $inc: { totalSignals: 1 } }
     );
+
+    // Track contribution for signal creation
+    contribution_services.track_contribution(accountId, 'create_signal', signal._id.toString());
   }
 
   return signal;
@@ -107,8 +111,14 @@ const create_signal = async (accountId: string, data: TCreateSignal) => {
 
 /**
  * Update a signal (Master only, own signals)
+ * If body contains `status: 'closed'` with `resultPnl`, triggers close logic
+ * (updates master win/loss stats, tracks contribution).
  */
-const update_signal = async (accountId: string, signalId: string, data: Partial<TCreateSignal>) => {
+const update_signal = async (
+  accountId: string,
+  signalId: string,
+  data: Partial<TCreateSignal> & TCloseSignal & { status?: SignalStatus }
+) => {
   if (!Types.ObjectId.isValid(signalId)) {
     throw new AppError('Invalid signal ID', httpStatus.BAD_REQUEST);
   }
@@ -122,6 +132,49 @@ const update_signal = async (accountId: string, signalId: string, data: Partial<
     throw new AppError('You can only update your own signals', httpStatus.FORBIDDEN);
   }
 
+  // Detect close action: status set to 'closed' with resultPnl provided
+  const isClosing = data.status === 'closed' && (data.resultPnl !== undefined && data.resultPnl !== null);
+
+  if (isClosing) {
+    const master = await Master_Model.findOne({ accountId });
+
+    const updates: Record<string, unknown> = {
+      status: 'closed',
+      closedAt: new Date(),
+      resultPnl: data.resultPnl,
+      closeNotes: data.closeNotes || '',
+    };
+
+    const updated = await Signal_Model.findByIdAndUpdate(signalId, updates, { new: true });
+
+    // Update master win/loss stats
+    if (master && data.resultPnl !== null && data.resultPnl !== undefined) {
+      const incField = data.resultPnl >= 0 ? 'winningSignals' : 'losingSignals';
+      await Master_Model.findOneAndUpdate(
+        { accountId },
+        { $inc: { [incField]: 1 } }
+      );
+
+      // Recalculate win rate
+      const updatedMaster = await Master_Model.findOne({ accountId });
+      if (updatedMaster) {
+        const total = updatedMaster.winningSignals + updatedMaster.losingSignals;
+        const winRate = total > 0 ? (updatedMaster.winningSignals / total) * 100 : 0;
+        await Master_Model.findOneAndUpdate(
+          { accountId },
+          { winRate: Math.round(winRate * 100) / 100 }
+        );
+      }
+
+      // Track contribution for closing signal
+      const activityType = data.resultPnl >= 0 ? 'close_signal_profit' : 'close_signal_loss';
+      contribution_services.track_contribution(accountId, activityType, signalId);
+    }
+
+    return updated;
+  }
+
+  // Regular update (not closing)
   if (signal.status !== 'active') {
     throw new AppError('Cannot update closed or expired signals', httpStatus.BAD_REQUEST);
   }
@@ -131,60 +184,6 @@ const update_signal = async (accountId: string, signalId: string, data: Partial<
     { $set: data },
     { new: true }
   );
-
-  return updated;
-};
-
-/**
- * Close a signal
- */
-const close_signal = async (accountId: string, signalId: string, data: TCloseSignal) => {
-  if (!Types.ObjectId.isValid(signalId)) {
-    throw new AppError('Invalid signal ID', httpStatus.BAD_REQUEST);
-  }
-
-  const signal = await Signal_Model.findById(signalId);
-  if (!signal) {
-    throw new AppError('Signal not found', httpStatus.NOT_FOUND);
-  }
-
-  if (signal.authorId.toString() !== accountId) {
-    throw new AppError('You can only close your own signals', httpStatus.FORBIDDEN);
-  }
-
-  const master = await Master_Model.findOne({ accountId });
-
-  const updates: Record<string, unknown> = {
-    status: 'closed',
-    closedAt: new Date(),
-    ...data,
-  };
-
-  const updated = await Signal_Model.findByIdAndUpdate(signalId, updates, { new: true });
-
-  // Update master win/loss stats
-  if (master && data.resultPnl !== null && data.resultPnl !== undefined) {
-    const incField = data.resultPnl >= 0 ? 'winningSignals' : 'losingSignals';
-    await Master_Model.findOneAndUpdate(
-      { accountId },
-      {
-        $inc: {
-          [incField]: 1,
-        },
-      }
-    );
-
-    // Recalculate win rate
-    const updatedMaster = await Master_Model.findOne({ accountId });
-    if (updatedMaster) {
-      const total = updatedMaster.winningSignals + updatedMaster.losingSignals;
-      const winRate = total > 0 ? (updatedMaster.winningSignals / total) * 100 : 0;
-      await Master_Model.findOneAndUpdate(
-        { accountId },
-        { winRate: Math.round(winRate * 100) / 100 }
-      );
-    }
-  }
 
   return updated;
 };
@@ -322,12 +321,114 @@ const get_my_signals = async (
 /**
  * Increment view count (called when a user views a signal)
  */
-const increment_view = async (signalId: string) => {
+const increment_view = async (signalId: string, viewerId?: string) => {
   if (!Types.ObjectId.isValid(signalId)) {
     throw new AppError('Invalid signal ID', httpStatus.BAD_REQUEST);
   }
 
   await Signal_Model.findByIdAndUpdate(signalId, { $inc: { viewCount: 1 } });
+
+  // Track contribution for viewing (if viewer is authenticated)
+  if (viewerId) {
+    contribution_services.track_contribution(viewerId, 'view_signal', signalId);
+  }
+};
+
+/**
+ * Like a signal
+ */
+const like_signal = async (accountId: string, signalId: string) => {
+  if (!Types.ObjectId.isValid(signalId)) {
+    throw new AppError('Invalid signal ID', httpStatus.BAD_REQUEST);
+  }
+
+  const signal = await Signal_Model.findById(signalId);
+  if (!signal) {
+    throw new AppError('Signal not found', httpStatus.NOT_FOUND);
+  }
+
+  await Signal_Model.findByIdAndUpdate(signalId, { $inc: { likeCount: 1 } });
+
+  // Track contribution for liking
+  contribution_services.track_contribution(accountId, 'like_signal', signalId);
+
+  return { message: 'Signal liked successfully' };
+};
+
+/**
+ * Unlike a signal
+ */
+const unlike_signal = async (accountId: string, signalId: string) => {
+  if (!Types.ObjectId.isValid(signalId)) {
+    throw new AppError('Invalid signal ID', httpStatus.BAD_REQUEST);
+  }
+
+  const signal = await Signal_Model.findById(signalId);
+  if (!signal) {
+    throw new AppError('Signal not found', httpStatus.NOT_FOUND);
+  }
+
+  await Signal_Model.findByIdAndUpdate(signalId, { $inc: { likeCount: -1 } });
+
+  return { message: 'Signal unliked successfully' };
+};
+
+/**
+ * Bookmark a signal
+ */
+const bookmark_signal = async (accountId: string, signalId: string) => {
+  if (!Types.ObjectId.isValid(signalId)) {
+    throw new AppError('Invalid signal ID', httpStatus.BAD_REQUEST);
+  }
+
+  const signal = await Signal_Model.findById(signalId);
+  if (!signal) {
+    throw new AppError('Signal not found', httpStatus.NOT_FOUND);
+  }
+
+  await Signal_Model.findByIdAndUpdate(signalId, { $inc: { bookmarkCount: 1 } });
+
+  // Track contribution for bookmarking
+  contribution_services.track_contribution(accountId, 'bookmark_signal', signalId);
+
+  return { message: 'Signal bookmarked successfully' };
+};
+
+/**
+ * Remove bookmark from a signal
+ */
+const unbookmark_signal = async (accountId: string, signalId: string) => {
+  if (!Types.ObjectId.isValid(signalId)) {
+    throw new AppError('Invalid signal ID', httpStatus.BAD_REQUEST);
+  }
+
+  const signal = await Signal_Model.findById(signalId);
+  if (!signal) {
+    throw new AppError('Signal not found', httpStatus.NOT_FOUND);
+  }
+
+  await Signal_Model.findByIdAndUpdate(signalId, { $inc: { bookmarkCount: -1 } });
+
+  return { message: 'Bookmark removed successfully' };
+};
+
+/**
+ * Share a signal (tracks share action)
+ */
+const share_signal = async (accountId: string, signalId: string) => {
+  if (!Types.ObjectId.isValid(signalId)) {
+    throw new AppError('Invalid signal ID', httpStatus.BAD_REQUEST);
+  }
+
+  const signal = await Signal_Model.findById(signalId);
+  if (!signal) {
+    throw new AppError('Signal not found', httpStatus.NOT_FOUND);
+  }
+
+  // Track contribution for sharing
+  contribution_services.track_contribution(accountId, 'share_signal', signalId);
+
+  return { message: 'Signal shared successfully' };
 };
 
 /**
@@ -399,12 +500,16 @@ const toggle_featured_signal = async (signalId: string, isFeatured: boolean) => 
 export const signal_services = {
   create_signal,
   update_signal,
-  close_signal,
   delete_signal,
   get_signals,
   get_signal_by_id,
   get_my_signals,
   increment_view,
+  like_signal,
+  unlike_signal,
+  bookmark_signal,
+  unbookmark_signal,
+  share_signal,
   publish_scheduled_signals,
   toggle_featured_signal,
 };

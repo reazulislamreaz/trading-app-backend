@@ -27,18 +27,6 @@ const update_signal = catchAsync(async (req, res) => {
   });
 });
 
-const close_signal = catchAsync(async (req, res) => {
-  const accountId = req.user!.userId;
-  const result = await signal_services.close_signal(accountId, req.params.id as string, req.body);
-
-  manageResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Signal closed successfully',
-    data: result,
-  });
-});
-
 const delete_signal = catchAsync(async (req, res) => {
   const accountId = req.user!.userId;
   const result = await signal_services.delete_signal(accountId, req.params.id as string);
@@ -115,13 +103,77 @@ const toggle_featured = catchAsync(async (req, res) => {
   });
 });
 
+const like_signal = catchAsync(async (req, res) => {
+  const accountId = req.user!.userId;
+  const result = await signal_services.like_signal(accountId, req.params.id as string);
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result.message,
+    data: null,
+  });
+});
+
+const unlike_signal = catchAsync(async (req, res) => {
+  const accountId = req.user!.userId;
+  const result = await signal_services.unlike_signal(accountId, req.params.id as string);
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result.message,
+    data: null,
+  });
+});
+
+const bookmark_signal = catchAsync(async (req, res) => {
+  const accountId = req.user!.userId;
+  const result = await signal_services.bookmark_signal(accountId, req.params.id as string);
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result.message,
+    data: null,
+  });
+});
+
+const unbookmark_signal = catchAsync(async (req, res) => {
+  const accountId = req.user!.userId;
+  const result = await signal_services.unbookmark_signal(accountId, req.params.id as string);
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result.message,
+    data: null,
+  });
+});
+
+const share_signal = catchAsync(async (req, res) => {
+  const accountId = req.user!.userId;
+  const result = await signal_services.share_signal(accountId, req.params.id as string);
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result.message,
+    data: null,
+  });
+});
+
 export const signal_controllers = {
   create_signal,
   update_signal,
-  close_signal,
   delete_signal,
   get_all_signals,
   get_single_signal,
   get_my_signals,
   toggle_featured,
+  like_signal,
+  unlike_signal,
+  bookmark_signal,
+  unbookmark_signal,
+  share_signal,
 };

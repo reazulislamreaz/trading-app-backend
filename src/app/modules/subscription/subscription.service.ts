@@ -129,51 +129,35 @@ export const subscription_services = {
     };
   },
 
-  // Cancel subscription
-  async cancel_subscription(accountId: string) {
+  // Update subscription status (cancel or resume)
+  async update_subscription_status(accountId: string, action: 'cancel' | 'resume') {
     const subscription = await Subscription_Model.findOne({ accountId });
-    
+
     if (!subscription) {
       throw new AppError('Subscription not found', httpStatus.NOT_FOUND);
     }
 
-    if (subscription.status === 'canceled') {
-      throw new AppError('Subscription is already canceled', httpStatus.BAD_REQUEST);
+    if (action === 'cancel') {
+      if (subscription.status === 'canceled') {
+        throw new AppError('Subscription is already canceled', httpStatus.BAD_REQUEST);
+      }
+
+      await stripeService.cancelSubscription(subscription.stripeSubscriptionId);
+      await Subscription_Model.findByIdAndUpdate(subscription._id, { cancelAtPeriodEnd: true });
+
+      return {
+        message: 'Subscription will be canceled at the end of current billing period',
+        currentPeriodEnd: subscription.currentPeriodEnd,
+      };
     }
 
-    // Cancel at period end via Stripe
-    await stripeService.cancelSubscription(subscription.stripeSubscriptionId);
-
-    // Update local record
-    await Subscription_Model.findByIdAndUpdate(subscription._id, {
-      cancelAtPeriodEnd: true,
-    });
-
-    return {
-      message: 'Subscription will be canceled at the end of current billing period',
-      currentPeriodEnd: subscription.currentPeriodEnd,
-    };
-  },
-
-  // Resume canceled subscription
-  async resume_subscription(accountId: string) {
-    const subscription = await Subscription_Model.findOne({ accountId });
-    
-    if (!subscription) {
-      throw new AppError('Subscription not found', httpStatus.NOT_FOUND);
-    }
-
+    // action === 'resume'
     if (!subscription.cancelAtPeriodEnd) {
       throw new AppError('Subscription is not scheduled for cancellation', httpStatus.BAD_REQUEST);
     }
 
-    // Resume via Stripe
     await stripeService.resumeSubscription(subscription.stripeSubscriptionId);
-
-    // Update local record
-    await Subscription_Model.findByIdAndUpdate(subscription._id, {
-      cancelAtPeriodEnd: false,
-    });
+    await Subscription_Model.findByIdAndUpdate(subscription._id, { cancelAtPeriodEnd: false });
 
     return {
       message: 'Subscription has been resumed',
@@ -181,10 +165,20 @@ export const subscription_services = {
     };
   },
 
-  // Upgrade subscription to higher tier
-  async upgrade_subscription(accountId: string, newPlanId: string) {
+  // Cancel subscription (backward compatibility, delegates to update_subscription_status)
+  async cancel_subscription(accountId: string) {
+    return this.update_subscription_status(accountId, 'cancel');
+  },
+
+  // Resume subscription (backward compatibility, delegates to update_subscription_status)
+  async resume_subscription(accountId: string) {
+    return this.update_subscription_status(accountId, 'resume');
+  },
+
+  // Change subscription plan (upgrade or downgrade)
+  async change_subscription_plan(accountId: string, newPlanId: string, direction?: 'upgrade' | 'downgrade') {
     const subscription = await Subscription_Model.findOne({ accountId });
-    
+
     if (!subscription) {
       throw new AppError('Subscription not found', httpStatus.NOT_FOUND);
     }
@@ -198,13 +192,24 @@ export const subscription_services = {
       throw new AppError('Plan not found or inactive', httpStatus.NOT_FOUND);
     }
 
-    // Check if actually upgrading
     const tierLevels = { free: 0, basic: 1, pro: 2, master: 3 };
     const currentTier = tierLevels[subscription.planId.split('_')[0] as keyof typeof tierLevels];
     const newTier = tierLevels[newPlan.tier];
 
-    if (newTier <= currentTier) {
-      throw new AppError('New plan must be higher than current plan', httpStatus.BAD_REQUEST);
+    // Validate direction matches tier change
+    if (direction === 'upgrade' && newTier <= currentTier) {
+      throw new AppError('New plan must be higher than current plan for upgrade', httpStatus.BAD_REQUEST);
+    }
+    if (direction === 'downgrade' && newTier >= currentTier) {
+      throw new AppError('New plan must be lower than current plan for downgrade', httpStatus.BAD_REQUEST);
+    }
+
+    if (!direction) {
+      // Auto-detect direction
+      if (newTier === currentTier) {
+        throw new AppError('New plan is the same tier as current plan', httpStatus.BAD_REQUEST);
+      }
+      direction = newTier > currentTier ? 'upgrade' : 'downgrade';
     }
 
     // Validate that new plan has Stripe price ID
@@ -212,66 +217,46 @@ export const subscription_services = {
       throw new AppError('Stripe price ID not configured for this plan', httpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    // Update subscription plan via Stripe (prorated)
-    await stripeService.updateSubscriptionPlan(
-      subscription.stripeSubscriptionId,
-      newPlan.stripePriceId
-    );
+    if (direction === 'upgrade') {
+      // Upgrade immediately with proration
+      await stripeService.updateSubscriptionPlan(
+        subscription.stripeSubscriptionId,
+        newPlan.stripePriceId
+      );
 
-    // Update local record
+      await Subscription_Model.findByIdAndUpdate(subscription._id, { planId: newPlanId });
+      await Account_Model.findByIdAndUpdate(accountId, { subscriptionTier: newPlan.tier });
+
+      return {
+        message: 'Subscription upgraded successfully',
+        newPlan: newPlan.name,
+        direction: 'upgrade' as const,
+        prorated: true,
+      };
+    }
+
+    // Downgrade at next billing cycle
     await Subscription_Model.findByIdAndUpdate(subscription._id, {
       planId: newPlanId,
-    });
-
-    // Update account tier
-    await Account_Model.findByIdAndUpdate(accountId, {
-      subscriptionTier: newPlan.tier,
-    });
-
-    return {
-      message: 'Subscription upgraded successfully',
-      newPlan: newPlan.name,
-      prorated: true,
-    };
-  },
-
-  // Downgrade subscription to lower tier
-  async downgrade_subscription(accountId: string, newPlanId: string) {
-    const subscription = await Subscription_Model.findOne({ accountId });
-    
-    if (!subscription) {
-      throw new AppError('Subscription not found', httpStatus.NOT_FOUND);
-    }
-
-    if (subscription.status !== 'active') {
-      throw new AppError('Subscription is not active', httpStatus.BAD_REQUEST);
-    }
-
-    const newPlan = await SubscriptionPlan_Model.findOne({ planId: newPlanId });
-    if (!newPlan || !newPlan.isActive) {
-      throw new AppError('Plan not found or inactive', httpStatus.NOT_FOUND);
-    }
-
-    // Check if actually downgrading
-    const tierLevels = { free: 0, basic: 1, pro: 2, master: 3 };
-    const currentTier = tierLevels[subscription.planId.split('_')[0] as keyof typeof tierLevels];
-    const newTier = tierLevels[newPlan.tier];
-
-    if (newTier >= currentTier) {
-      throw new AppError('New plan must be lower than current plan', httpStatus.BAD_REQUEST);
-    }
-
-    // Schedule downgrade for next billing cycle
-    await Subscription_Model.findByIdAndUpdate(subscription._id, {
-      planId: newPlanId,
-      cancelAtPeriodEnd: true, // Will cancel current and create new subscription
+      cancelAtPeriodEnd: true,
     });
 
     return {
       message: 'Subscription will be downgraded at the end of current billing period',
       newPlan: newPlan.name,
+      direction: 'downgrade' as const,
       effectiveDate: subscription.currentPeriodEnd,
     };
+  },
+
+  // Upgrade subscription (backward compatibility)
+  async upgrade_subscription(accountId: string, newPlanId: string) {
+    return this.change_subscription_plan(accountId, newPlanId, 'upgrade');
+  },
+
+  // Downgrade subscription (backward compatibility)
+  async downgrade_subscription(accountId: string, newPlanId: string) {
+    return this.change_subscription_plan(accountId, newPlanId, 'downgrade');
   },
 
   // Create billing portal session

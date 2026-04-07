@@ -24,25 +24,20 @@ subscriptionRouter.post(
 // Get current subscription
 subscriptionRouter.get('/current', subscription_controllers.get_current_subscription);
 
-// Cancel subscription
+// Cancel/resume subscription
+subscriptionRouter.post('/status', subscription_controllers.update_subscription_status);
+
+// Change plan (upgrade or downgrade)
+subscriptionRouter.post(
+  '/change-plan',
+  subscription_controllers.change_subscription_plan,
+);
+
+// Backward-compatible endpoints (deprecated, use /status and /change-plan instead)
 subscriptionRouter.post('/cancel', subscription_controllers.cancel_subscription);
-
-// Resume subscription
 subscriptionRouter.post('/resume', subscription_controllers.resume_subscription);
-
-// Upgrade subscription
-subscriptionRouter.post(
-  '/upgrade',
-  RequestValidator(subscription_validations.upgrade_subscription),
-  subscription_controllers.upgrade_subscription
-);
-
-// Downgrade subscription
-subscriptionRouter.post(
-  '/downgrade',
-  RequestValidator(subscription_validations.downgrade_subscription),
-  subscription_controllers.downgrade_subscription
-);
+subscriptionRouter.post('/upgrade', subscription_controllers.upgrade_subscription);
+subscriptionRouter.post('/downgrade', subscription_controllers.downgrade_subscription);
 
 // Create billing portal session
 subscriptionRouter.post(

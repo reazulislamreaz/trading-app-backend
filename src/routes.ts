@@ -8,6 +8,9 @@ import masterRouter from './app/modules/master/master.route';
 import followRouter from './app/modules/follow/follow.route';
 import notificationRouter from './app/modules/notification/notification.route';
 import adminRouter from './app/modules/admin/admin.route';
+import contributionRouter from './app/modules/contribution/contribution.route';
+import leaderboardRouter from './app/modules/leaderboard/leaderboard.route';
+import topTradersRouter from './app/modules/top-traders/top_traders.route';
 
 const appRouter = Router();
 
@@ -23,6 +26,11 @@ const moduleRoutes = [
     { path: '/masters', route: masterRouter },
     { path: '/follow', route: followRouter },
     { path: '/notifications', route: notificationRouter },
+
+    // Ranking & engagement modules
+    { path: '/contributions', route: contributionRouter },
+    { path: '/leaderboard', route: leaderboardRouter },
+    { path: '/top-traders', route: topTradersRouter },
 
     // Admin module
     { path: '/admin', route: adminRouter },

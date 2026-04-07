@@ -3,32 +3,6 @@ import manageResponse from '../../utils/manage_response';
 import { follow_services } from './follow.service';
 import httpStatus from 'http-status';
 
-const follow_master = catchAsync(async (req, res) => {
-  const followerId = req.user!.userId;
-  const { masterId } = req.body;
-  const result = await follow_services.follow_master(followerId, masterId);
-
-  manageResponse(res, {
-    success: true,
-    statusCode: httpStatus.CREATED,
-    message: result.message,
-    data: null,
-  });
-});
-
-const unfollow_master = catchAsync(async (req, res) => {
-  const followerId = req.user!.userId;
-  const { masterId } = req.body;
-  const result = await follow_services.unfollow_master(followerId, masterId);
-
-  manageResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: result.message,
-    data: null,
-  });
-});
-
 const toggle_follow = catchAsync(async (req, res) => {
   const followerId = req.user!.userId;
   const result = await follow_services.toggle_follow(followerId, req.params.id as string);
@@ -85,8 +59,6 @@ const check_follow_status = catchAsync(async (req, res) => {
 });
 
 export const follow_controllers = {
-  follow_master,
-  unfollow_master,
   toggle_follow,
   get_following,
   get_followers,

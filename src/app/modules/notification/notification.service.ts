@@ -71,9 +71,9 @@ const get_my_notifications = async (
 };
 
 /**
- * Mark a single notification as read
+ * Update a notification (currently supports toggling isRead status)
  */
-const mark_as_read = async (accountId: string, notificationId: string) => {
+const update_notification = async (accountId: string, notificationId: string, data: { isRead?: boolean }) => {
   if (!Types.ObjectId.isValid(notificationId)) {
     throw new AppError('Invalid notification ID', httpStatus.BAD_REQUEST);
   }
@@ -87,10 +87,19 @@ const mark_as_read = async (accountId: string, notificationId: string) => {
     throw new AppError('Notification not found', httpStatus.NOT_FOUND);
   }
 
-  notification.isRead = true;
-  await notification.save();
+  if (data.isRead !== undefined) {
+    notification.isRead = data.isRead;
+    await notification.save();
+  }
 
   return notification;
+};
+
+/**
+ * Mark a single notification as read (kept for backward compatibility, delegates to update_notification)
+ */
+const mark_as_read = async (accountId: string, notificationId: string) => {
+  return update_notification(accountId, notificationId, { isRead: true });
 };
 
 /**
@@ -177,6 +186,7 @@ const broadcast_announcement = async (
 export const notification_services = {
   create_notification,
   get_my_notifications,
+  update_notification,
   mark_as_read,
   mark_all_as_read,
   delete_notification,

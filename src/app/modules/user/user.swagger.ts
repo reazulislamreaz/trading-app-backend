@@ -1,10 +1,10 @@
 export const userSwaggerDocs = {
     "/api/v1/user/update-profile": {
         patch: {
-            tags: ["User"],
+            tags: ["Users"],
             summary: "Update user profile",
             description:
-                "Updates the authenticated user's profile information. To update the profile image, first upload the image via the Upload module (`POST /api/v1/upload/file`), then pass the returned URL as `userProfileUrl` in this endpoint. Accessible by ADMIN and USER roles.",
+                "Updates the authenticated user's profile information. To update the profile image, first upload the image via the Upload module (`POST /api/v1/upload/file`), then pass the returned URL as `userProfileUrl` in this endpoint. Accessible by ADMIN, USER, and MASTER roles.",
             security: [{ bearerAuth: [] }],
             requestBody: {
                 required: true,
@@ -63,13 +63,13 @@ export const userSwaggerDocs = {
                     },
                 },
                 400: { description: "Bad Request — Validation failed" },
-                401: { description: "Unauthorized — must be logged in as ADMIN or USER" },
+                401: { description: "Unauthorized — must be logged in as ADMIN, USER, or MASTER" },
             },
         },
     },
     "/api/v1/user/": {
         get: {
-            tags: ["User"],
+            tags: ["Users"],
             summary: "Get all users",
             description: "Retrieve all users with pagination. Requires ADMIN role.",
             security: [{ bearerAuth: [] }],
@@ -121,7 +121,7 @@ export const userSwaggerDocs = {
     },
     "/api/v1/user/{id}": {
         get: {
-            tags: ["User"],
+            tags: ["Users"],
             summary: "Get single user",
             description: "Retrieve a single user by ID. Requires ADMIN role.",
             security: [{ bearerAuth: [] }],
@@ -153,12 +153,10 @@ export const userSwaggerDocs = {
                 401: { description: "Unauthorized — ADMIN role required" },
             },
         },
-    },
-    "/api/v1/user/suspend/{id}": {
         patch: {
-            tags: ["User"],
-            summary: "Suspend user",
-            description: "Suspend a user account. Requires ADMIN role.",
+            tags: ["Users"],
+            summary: "Update user account status",
+            description: "Update a user's account status (ACTIVE or SUSPENDED). Requires ADMIN role.",
             security: [{ bearerAuth: [] }],
             parameters: [
                 {
@@ -166,26 +164,47 @@ export const userSwaggerDocs = {
                     in: "path",
                     required: true,
                     schema: { type: "string" },
-                    description: "User ID to suspend",
+                    description: "User ID",
                 },
             ],
+            requestBody: {
+                required: true,
+                content: {
+                    "application/json": {
+                        schema: {
+                            type: "object",
+                            required: ["status"],
+                            properties: {
+                                status: {
+                                    type: "string",
+                                    enum: ["ACTIVE", "SUSPENDED"],
+                                    example: "SUSPENDED",
+                                    description: "New account status",
+                                },
+                            },
+                        },
+                    },
+                },
+            },
             responses: {
                 200: {
-                    description: "User suspended successfully",
+                    description: "User status updated successfully",
                     content: {
                         "application/json": {
                             schema: {
                                 type: "object",
                                 properties: {
                                     success: { type: "boolean", example: true },
-                                    message: { type: "string", example: "User suspended successfully." },
+                                    message: { type: "string", example: "User status updated to SUSPENDED" },
                                     data: { type: "object" },
                                 },
                             },
                         },
                     },
                 },
+                400: { description: "Bad Request — Invalid status or missing status field" },
                 401: { description: "Unauthorized — ADMIN role required" },
+                404: { description: "User not found" },
             },
         },
     },

@@ -30,12 +30,26 @@ const get_my_notifications = catchAsync(async (req, res) => {
 
 const mark_as_read = catchAsync(async (req, res) => {
   const accountId = req.user!.userId;
-  const result = await notification_services.mark_as_read(accountId, req.params.id as string);
+  const result = await notification_services.update_notification(accountId, req.params.id as string, { isRead: true });
 
   manageResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Notification marked as read',
+    data: result,
+  });
+});
+
+const update_notification = catchAsync(async (req, res) => {
+  const accountId = req.user!.userId;
+  const { isRead } = req.body;
+
+  const result = await notification_services.update_notification(accountId, req.params.id as string, { isRead });
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Notification updated',
     data: result,
   });
 });
@@ -78,6 +92,7 @@ const get_unread_count = catchAsync(async (req, res) => {
 
 export const notification_controllers = {
   get_my_notifications,
+  update_notification,
   mark_as_read,
   mark_all_as_read,
   delete_notification,

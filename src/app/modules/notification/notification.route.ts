@@ -10,7 +10,7 @@ notificationRouter.use(auth('USER', 'ADMIN', 'MASTER'));
 notificationRouter.get('/', notification_controllers.get_my_notifications);
 notificationRouter.get('/unread-count', notification_controllers.get_unread_count);
 notificationRouter.patch('/mark-all-read', notification_controllers.mark_all_as_read);
-notificationRouter.patch('/:id/read', notification_controllers.mark_as_read);
+notificationRouter.patch('/:id', notification_controllers.update_notification);
 notificationRouter.delete('/:id', notification_controllers.delete_notification);
 
 export default notificationRouter;

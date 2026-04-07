@@ -17,7 +17,6 @@ userRoute.patch(
 // Admin-only routes
 userRoute.get("/", auth("ADMIN"), user_controllers.get_all_users);
 userRoute.get("/:id", auth("ADMIN"), user_controllers.get_single_user);
-userRoute.patch("/suspend/:id", auth("ADMIN"), user_controllers.suspend_user);
-userRoute.patch("/activate/:id", auth("ADMIN"), user_controllers.activate_user);
+userRoute.patch("/status/:id", auth("ADMIN"), user_controllers.update_user_status);
 
 export default userRoute;

@@ -132,11 +132,67 @@ export const subscriptionSwaggerDocs = {
       },
     },
   },
+  "/api/v1/subscription/status": {
+    post: {
+      tags: ["Subscription"],
+      summary: "Update subscription status (cancel or resume)",
+      description: "Cancel or resume your subscription. Use `{ action: 'cancel' }` to cancel at period end, or `{ action: 'resume' }` to resume a scheduled cancellation.",
+      security: [{ bearerAuth: [] }],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["action"],
+              properties: {
+                action: { type: "string", enum: ["cancel", "resume"], example: "cancel" },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        200: { description: "Subscription status updated" },
+        400: { description: "Bad Request — Invalid action or subscription state" },
+        401: { description: "Unauthorized" },
+      },
+    },
+  },
+  "/api/v1/subscription/change-plan": {
+    post: {
+      tags: ["Subscription"],
+      summary: "Change subscription plan (upgrade or downgrade)",
+      description: "Upgrade or downgrade your subscription plan. Upgrades are immediate and prorated. Downgrades take effect at the end of the current billing period. If `direction` is not provided, it is auto-detected based on tier comparison.",
+      security: [{ bearerAuth: [] }],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["planId"],
+              properties: {
+                planId: { type: "string", example: "pro_monthly" },
+                direction: { type: "string", enum: ["upgrade", "downgrade"], example: "upgrade" },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        200: { description: "Subscription plan changed" },
+        400: { description: "Bad Request — Invalid plan or direction mismatch" },
+        401: { description: "Unauthorized" },
+      },
+    },
+  },
   "/api/v1/subscription/cancel": {
     post: {
       tags: ["Subscription"],
-      summary: "Cancel subscription",
-      description: "Cancel the current subscription. Access continues until the end of the billing period.",
+      summary: "Cancel subscription (deprecated)",
+      description: "Deprecated: Use `POST /subscription/status` with `{ action: 'cancel' }` instead. Cancel the current subscription. Access continues until the end of the billing period.",
+      deprecated: true,
       security: [{ bearerAuth: [] }],
       responses: {
         200: {
@@ -167,8 +223,9 @@ export const subscriptionSwaggerDocs = {
   "/api/v1/subscription/resume": {
     post: {
       tags: ["Subscription"],
-      summary: "Resume subscription",
-      description: "Resume a subscription that was scheduled for cancellation.",
+      summary: "Resume subscription (deprecated)",
+      description: "Deprecated: Use `POST /subscription/status` with `{ action: 'resume' }` instead. Resume a subscription that was scheduled for cancellation.",
+      deprecated: true,
       security: [{ bearerAuth: [] }],
       responses: {
         200: {
@@ -199,8 +256,9 @@ export const subscriptionSwaggerDocs = {
   "/api/v1/subscription/upgrade": {
     post: {
       tags: ["Subscription"],
-      summary: "Upgrade subscription",
-      description: "Upgrade to a higher subscription tier. Changes are prorated and effective immediately.",
+      summary: "Upgrade subscription (deprecated)",
+      description: "Deprecated: Use `POST /subscription/change-plan` with `{ planId, direction: 'upgrade' }` instead. Upgrade to a higher subscription tier. Changes are prorated and effective immediately.",
+      deprecated: true,
       security: [{ bearerAuth: [] }],
       requestBody: {
         required: true,
@@ -250,8 +308,9 @@ export const subscriptionSwaggerDocs = {
   "/api/v1/subscription/downgrade": {
     post: {
       tags: ["Subscription"],
-      summary: "Downgrade subscription",
-      description: "Downgrade to a lower subscription tier. Changes take effect at the end of the current billing period.",
+      summary: "Downgrade subscription (deprecated)",
+      description: "Deprecated: Use `POST /subscription/change-plan` with `{ planId, direction: 'downgrade' }` instead. Downgrade to a lower subscription tier. Changes take effect at the end of the current billing period.",
+      deprecated: true,
       security: [{ bearerAuth: [] }],
       requestBody: {
         required: true,

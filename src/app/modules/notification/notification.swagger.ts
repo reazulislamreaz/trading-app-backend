@@ -116,24 +116,34 @@ export const notificationSwaggerDocs = {
     },
   },
 
-  "/api/v1/notifications/{id}/read": {
+  "/api/v1/notifications/{id}": {
     patch: {
       tags: ["Notifications"],
-      summary: "Mark notification as read",
-      description: "Mark a single notification as read.",
+      summary: "Update a notification",
+      description: "Update notification fields. Currently supports `isRead` to mark as read/unread.",
       security: [{ bearerAuth: [] }],
       parameters: [
         { name: "id", in: "path", required: true, schema: { type: "string" }, description: "Notification ID" },
       ],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              properties: {
+                isRead: { type: "boolean", example: true, description: "Set read status" },
+              },
+            },
+          },
+        },
+      },
       responses: {
-        200: { description: "Notification marked as read" },
+        200: { description: "Notification updated" },
         400: { description: "Invalid notification ID" },
         404: { description: "Notification not found" },
       },
     },
-  },
-
-  "/api/v1/notifications/{id}": {
     delete: {
       tags: ["Notifications"],
       summary: "Delete a notification",

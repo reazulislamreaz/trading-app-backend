@@ -3,7 +3,7 @@ export const masterSwaggerDocs = {
     get: {
       tags: ["Masters"],
       summary: "List all masters (public)",
-      description: "Get paginated list of Master Traders. Filterable by approval status and featured status.",
+      description: "Get paginated list of Master Traders. Filterable by approval status and featured status. Admins can use this same endpoint with `?isApproved=true` to view approved masters.",
       parameters: [
         { name: "page", in: "query", schema: { type: "integer", default: 1 } },
         { name: "limit", in: "query", schema: { type: "integer", default: 10 } },
@@ -155,25 +155,6 @@ export const masterSwaggerDocs = {
           },
         },
         404: { description: "Master profile not found" },
-      },
-    },
-  },
-
-  "/api/v1/masters/admin/list": {
-    get: {
-      tags: ["Masters (Admin)"],
-      summary: "List all masters (Admin)",
-      description: "Admin only. View all master profiles with filtering options.",
-      security: [{ bearerAuth: [] }],
-      parameters: [
-        { name: "page", in: "query", schema: { type: "integer", default: 1 } },
-        { name: "limit", in: "query", schema: { type: "integer", default: 10 } },
-        { name: "isApproved", in: "query", schema: { type: "boolean" } },
-        { name: "isFeatured", in: "query", schema: { type: "boolean" } },
-      ],
-      responses: {
-        200: { description: "Masters list retrieved" },
-        403: { description: "Admin access required" },
       },
     },
   },

@@ -1,64 +1,9 @@
 export const followSwaggerDocs = {
-  "/api/v1/follow/follow": {
-    post: {
-      tags: ["Follow"],
-      summary: "Follow a master",
-      description: "Start following a Master Trader. Increments the master's follower count.",
-      security: [{ bearerAuth: [] }],
-      requestBody: {
-        required: true,
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              required: ["masterId"],
-              properties: {
-                masterId: { type: "string", example: "65f1234567890abcdef12345", description: "Account ID of the Master Trader to follow" },
-              },
-            },
-          },
-        },
-      },
-      responses: {
-        201: { description: "Successfully following master" },
-        400: { description: "Invalid master ID or user is not a Master Trader" },
-        409: { description: "Already following this master" },
-      },
-    },
-  },
-
-  "/api/v1/follow/unfollow": {
-    post: {
-      tags: ["Follow"],
-      summary: "Unfollow a master",
-      description: "Stop following a Master Trader. Decrements the master's follower count.",
-      security: [{ bearerAuth: [] }],
-      requestBody: {
-        required: true,
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              required: ["masterId"],
-              properties: {
-                masterId: { type: "string", example: "65f1234567890abcdef12345" },
-              },
-            },
-          },
-        },
-      },
-      responses: {
-        200: { description: "Successfully unfollowed master" },
-        404: { description: "Not following this master" },
-      },
-    },
-  },
-
   "/api/v1/follow/toggle/{id}": {
     post: {
       tags: ["Follow"],
       summary: "Toggle follow status",
-      description: "Follow if not following, unfollow if already following. Convenient single endpoint.",
+      description: "Follow if not following, unfollow if already following. Single endpoint for both actions.",
       security: [{ bearerAuth: [] }],
       parameters: [
         { name: "id", in: "path", required: true, schema: { type: "string" }, description: "Master Trader account ID" },
@@ -84,7 +29,7 @@ export const followSwaggerDocs = {
             },
           },
         },
-        400: { description: "Invalid master ID" },
+        400: { description: "Invalid master ID or user is not a Master Trader" },
       },
     },
   },

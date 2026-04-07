@@ -24,13 +24,14 @@ signalRouter.patch(
   RequestValidator(signal_validations.updateSignalSchema),
   signal_controllers.update_signal,
 );
-signalRouter.patch(
-  '/:id/close',
-  auth('MASTER'),
-  RequestValidator(signal_validations.closeSignalSchema),
-  signal_controllers.close_signal,
-);
 signalRouter.delete('/:id', auth('MASTER'), signal_controllers.delete_signal);
+
+// Engagement routes (authenticated users)
+signalRouter.post('/:id/like', auth('ADMIN', 'USER', 'MASTER'), signal_controllers.like_signal);
+signalRouter.delete('/:id/like', auth('ADMIN', 'USER', 'MASTER'), signal_controllers.unlike_signal);
+signalRouter.post('/:id/bookmark', auth('ADMIN', 'USER', 'MASTER'), signal_controllers.bookmark_signal);
+signalRouter.delete('/:id/bookmark', auth('ADMIN', 'USER', 'MASTER'), signal_controllers.unbookmark_signal);
+signalRouter.post('/:id/share', auth('ADMIN', 'USER', 'MASTER'), signal_controllers.share_signal);
 
 // Admin routes
 signalRouter.patch('/featured/:id', auth('ADMIN'), signal_controllers.toggle_featured);

@@ -46,9 +46,32 @@ const get_current_subscription = catchAsync(async (req: Request, res: Response) 
   });
 });
 
+const update_subscription_status = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user!;
+  const { action } = req.body;
+
+  if (!action || !['cancel', 'resume'].includes(action)) {
+    manageResponse(res, {
+      success: false,
+      statusCode: httpStatus.BAD_REQUEST,
+      message: "Action is required. Use 'cancel' or 'resume'",
+      data: null,
+    });
+    return;
+  }
+
+  const result = await subscription_services.update_subscription_status(user.userId, action);
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result.message,
+    data: { currentPeriodEnd: result.currentPeriodEnd, nextBillingDate: result.nextBillingDate },
+  });
+});
+
 const cancel_subscription = catchAsync(async (req: Request, res: Response) => {
   const user = req.user!;
-
   const result = await subscription_services.cancel_subscription(user.userId);
 
   manageResponse(res, {
@@ -61,7 +84,6 @@ const cancel_subscription = catchAsync(async (req: Request, res: Response) => {
 
 const resume_subscription = catchAsync(async (req: Request, res: Response) => {
   const user = req.user!;
-
   const result = await subscription_services.resume_subscription(user.userId);
 
   manageResponse(res, {
@@ -72,31 +94,27 @@ const resume_subscription = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const upgrade_subscription = catchAsync(async (req: Request, res: Response) => {
+const change_subscription_plan = catchAsync(async (req: Request, res: Response) => {
   const user = req.user!;
-  const { planId } = req.body;
+  const { planId, direction } = req.body;
 
-  const result = await subscription_services.upgrade_subscription(user.userId, planId);
+  if (!planId) {
+    manageResponse(res, {
+      success: false,
+      statusCode: httpStatus.BAD_REQUEST,
+      message: 'planId is required',
+      data: null,
+    });
+    return;
+  }
+
+  const result = await subscription_services.change_subscription_plan(user.userId, planId, direction);
 
   manageResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: result.message,
-    data: { newPlan: result.newPlan, prorated: result.prorated },
-  });
-});
-
-const downgrade_subscription = catchAsync(async (req: Request, res: Response) => {
-  const user = req.user!;
-  const { planId } = req.body;
-
-  const result = await subscription_services.downgrade_subscription(user.userId, planId);
-
-  manageResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: result.message,
-    data: { newPlan: result.newPlan, effectiveDate: result.effectiveDate },
+    data: { newPlan: result.newPlan, direction: result.direction, prorated: result.prorated, effectiveDate: result.effectiveDate },
   });
 });
 
@@ -111,6 +129,33 @@ const create_billing_portal = catchAsync(async (req: Request, res: Response) => 
     statusCode: httpStatus.OK,
     message: 'Billing portal session created',
     data: result,
+  });
+});
+
+// Backward-compatible wrappers (deprecated — use change_subscription_plan instead)
+const upgrade_subscription = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user!;
+  const { planId } = req.body;
+  const result = await subscription_services.change_subscription_plan(user.userId, planId, 'upgrade');
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result.message,
+    data: { newPlan: result.newPlan, prorated: result.prorated },
+  });
+});
+
+const downgrade_subscription = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user!;
+  const { planId } = req.body;
+  const result = await subscription_services.change_subscription_plan(user.userId, planId, 'downgrade');
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result.message,
+    data: { newPlan: result.newPlan, effectiveDate: result.effectiveDate },
   });
 });
 
@@ -150,8 +195,10 @@ export const subscription_controllers = {
   get_all_plans,
   create_checkout_session,
   get_current_subscription,
+  update_subscription_status,
   cancel_subscription,
   resume_subscription,
+  change_subscription_plan,
   upgrade_subscription,
   downgrade_subscription,
   create_billing_portal,

@@ -7,9 +7,7 @@ const followRouter = Router();
 // All follow routes require authentication
 followRouter.use(auth('USER', 'ADMIN', 'MASTER'));
 
-// Manage follows
-followRouter.post('/follow', follow_controllers.follow_master);
-followRouter.post('/unfollow', follow_controllers.unfollow_master);
+// Toggle follow — auto-detects current state and flips it
 followRouter.post('/toggle/:id', follow_controllers.toggle_follow);
 
 // View lists
