@@ -5,6 +5,8 @@ import { Master_Model } from '../master/master.schema';
 import { Account_Model } from '../auth/auth.schema';
 import { Types } from 'mongoose';
 import { contribution_services } from '../contribution/contribution.service';
+import { notification_services } from '../notification/notification.service';
+import { follow_services } from '../follow/follow.service';
 
 interface TCreateSignal {
   title: string;
@@ -445,11 +447,12 @@ const publish_scheduled_signals = async () => {
   });
 
   if (signalsToPublish.length === 0) {
-    return { published: 0, errors: 0 };
+    return { published: 0, errors: 0, notified: 0 };
   }
 
   let publishedCount = 0;
   let errorCount = 0;
+  let notifiedCount = 0;
 
   for (const signal of signalsToPublish) {
     try {
@@ -465,6 +468,42 @@ const publish_scheduled_signals = async () => {
         { $inc: { totalSignals: 1 } }
       );
 
+      // Track contribution for scheduled signal publish
+      contribution_services.track_contribution(signal.authorId.toString(), 'create_signal', signal._id.toString());
+
+      // Notify followers about the new signal
+      try {
+        // Populate authorId to get master name
+        const populatedSignal = await Signal_Model.findById(signal._id).populate('authorId', 'name');
+        if (!populatedSignal) continue;
+
+        const followers = await follow_services.get_followers(populatedSignal.authorId._id.toString(), 1, 10000);
+        
+        if (followers.data && followers.data.length > 0) {
+          const masterName = (populatedSignal.authorId as any).name || 'Master Trader';
+          
+          const notifications = followers.data.map((follow: any) => ({
+            accountId: follow.followerId._id.toString(),
+            type: 'new_signal' as const,
+            title: `New signal from ${masterName}`,
+            message: populatedSignal.title,
+            link: `/signals/${populatedSignal._id.toString()}`,
+            data: {
+              signalId: populatedSignal._id.toString(),
+              symbol: populatedSignal.symbol,
+              signalType: populatedSignal.signalType,
+            },
+          }));
+
+          const { Notification_Model } = await import('../notification/notification.schema');
+          await Notification_Model.insertMany(notifications);
+          notifiedCount += notifications.length;
+        }
+      } catch (notifyError: any) {
+        // Log notification error but don't fail the publish
+        console.error(`Failed to send notifications for signal ${signal._id}: ${notifyError.message}`);
+      }
+
       publishedCount++;
     } catch (error: any) {
       errorCount++;
@@ -473,7 +512,7 @@ const publish_scheduled_signals = async () => {
     }
   }
 
-  return { published: publishedCount, errors: errorCount, total: signalsToPublish.length };
+  return { published: publishedCount, errors: errorCount, total: signalsToPublish.length, notified: notifiedCount };
 };
 
 /**

@@ -12,8 +12,10 @@ const executePublishJob = async () => {
 
     if (result.total && result.total > 0) {
       logger.info(
-        `⏰ Scheduled signal publish complete: ${result.published} published, ${result.errors} errors, ${result.total} total`
+        `⏰ Scheduled signal publish complete: ${result.published} published, ${result.notified} notifications sent, ${result.errors} errors, ${result.total} total`
       );
+    } else {
+      logger.info('📅 Signal publish check: no signals due');
     }
   } catch (error: any) {
     logger.error(`❌ Failed to execute scheduled publish job: ${error.message}`);

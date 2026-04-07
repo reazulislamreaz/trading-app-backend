@@ -99,6 +99,8 @@ export const signalSwaggerDocs = {
                 isPremium: { type: "boolean", default: false, example: true },
                 tags: { type: "array", items: { type: "string" }, maxItems: 10, example: ["breakout", "eurusd"] },
                 externalChartUrl: { type: "string", format: "uri", example: "https://www.tradingview.com/chart/..." },
+                publishType: { type: "string", enum: ["instant", "scheduled"], default: "instant", example: "scheduled", description: "Publish mode: 'instant' (default) publishes immediately, 'scheduled' publishes at scheduledAt time" },
+                scheduledAt: { type: "string", format: "date-time", example: "2026-04-08T10:00:00.000Z", description: "Required when publishType is 'scheduled'. Must be a future ISO 8601 datetime. Signal will auto-publish at this time." },
               },
             },
           },
