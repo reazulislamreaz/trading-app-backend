@@ -5,6 +5,7 @@ export const uploadSwaggerDocs = {
       summary: "Upload a single file",
       description:
         "Uploads a single file to S3 storage. Supports images (JPG, PNG, WebP), PDF, and CSV files. Maximum file size: 20MB. This is the central upload endpoint used by all modules for file uploads.",
+      security: [{ bearerAuth: [] }],
       requestBody: {
         required: true,
         content: {
@@ -55,6 +56,20 @@ export const uploadSwaggerDocs = {
             },
           },
         },
+        401: {
+          description: "Unauthorized — Missing or invalid JWT token",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  success: { type: "boolean", example: false },
+                  message: { type: "string", example: "Authorization header missing or malformed" },
+                },
+              },
+            },
+          },
+        },
         500: {
           description: "Internal Server Error — Upload failed",
           content: {
@@ -78,6 +93,7 @@ export const uploadSwaggerDocs = {
       summary: "Upload multiple files",
       description:
         "Uploads multiple files (up to 10) to S3 storage. Supports images (JPG, PNG, WebP), PDF, and CSV files. Maximum file size per file: 20MB.",
+      security: [{ bearerAuth: [] }],
       requestBody: {
         required: true,
         content: {
@@ -130,6 +146,20 @@ export const uploadSwaggerDocs = {
                 properties: {
                   success: { type: "boolean", example: false },
                   message: { type: "string", example: "No file uploaded" },
+                },
+              },
+            },
+          },
+        },
+        401: {
+          description: "Unauthorized — Missing or invalid JWT token",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  success: { type: "boolean", example: false },
+                  message: { type: "string", example: "Authorization header missing or malformed" },
                 },
               },
             },

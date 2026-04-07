@@ -4,9 +4,10 @@ import logger from "../../configs/logger";
 
 export const uploadFile = async (req: Request, res: Response) => {
   try {
-    const files = req.files as Express.Multer.File[];
-    const file = req.file as Express.Multer.File;
+    const files = (req.files as Express.Multer.File[]) || [];
+    const file = req.file as Express.Multer.File | undefined;
 
+    // Handle single file upload
     if (file) {
       const url = await UploadService.uploadSingleFile(file);
 
@@ -16,7 +17,8 @@ export const uploadFile = async (req: Request, res: Response) => {
       });
     }
 
-    if (files && files.length > 0) {
+    // Handle multiple files upload
+    if (files.length > 0) {
       const urls = await UploadService.uploadMultipleFiles(files);
 
       return res.status(200).json({
