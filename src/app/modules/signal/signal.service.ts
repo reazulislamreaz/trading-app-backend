@@ -21,6 +21,8 @@ interface TCreateSignal {
   isPremium?: boolean;
   tags?: string[];
   externalChartUrl?: string;
+  publishType?: 'instant' | 'scheduled';
+  scheduledAt?: string;
 }
 
 interface TCloseSignal {
@@ -38,6 +40,7 @@ interface TSignalFilters {
 
 /**
  * Create a new signal (Master only)
+ * Supports instant publish (default) and scheduled publish
  */
 const create_signal = async (accountId: string, data: TCreateSignal) => {
   // Verify user is a Master
@@ -56,20 +59,48 @@ const create_signal = async (accountId: string, data: TCreateSignal) => {
     throw new AppError('Your Master profile has not been approved yet', httpStatus.FORBIDDEN);
   }
 
+  // Determine publish type and status
+  const publishType = data.publishType || 'instant';
+  let status: 'active' | 'scheduled' = 'active';
+  let scheduledAt: Date | null = null;
+  let publishedAt: Date | null = null;
+
+  if (publishType === 'scheduled') {
+    if (!data.scheduledAt) {
+      throw new AppError('scheduledAt is required when publishType is scheduled', httpStatus.BAD_REQUEST);
+    }
+
+    scheduledAt = new Date(data.scheduledAt);
+    if (isNaN(scheduledAt.getTime())) {
+      throw new AppError('Invalid scheduledAt date format', httpStatus.BAD_REQUEST);
+    }
+
+    status = 'scheduled';
+  } else {
+    // Instant publish - set publishedAt to now
+    publishedAt = new Date();
+  }
+
   const signal = await Signal_Model.create({
     ...data,
     authorId: new Types.ObjectId(accountId),
+    status,
+    publishType,
+    scheduledAt,
+    publishedAt,
     stopLoss: data.stopLoss ?? null,
     takeProfit1: data.takeProfit1 ?? null,
     takeProfit2: data.takeProfit2 ?? null,
     takeProfit3: data.takeProfit3 ?? null,
   });
 
-  // Update master stats
-  await Master_Model.findOneAndUpdate(
-    { accountId },
-    { $inc: { totalSignals: 1 } }
-  );
+  // Update master stats only for instantly published signals
+  if (publishType === 'instant') {
+    await Master_Model.findOneAndUpdate(
+      { accountId },
+      { $inc: { totalSignals: 1 } }
+    );
+  }
 
   return signal;
 };
@@ -188,6 +219,7 @@ const delete_signal = async (accountId: string, signalId: string) => {
 
 /**
  * Get signals with filters and pagination
+ * Only returns published signals (status = 'active') for public access
  */
 const get_signals = async (
   page: number = 1,
@@ -203,14 +235,14 @@ const get_signals = async (
   if (filters.isPremium !== undefined) query.isPremium = filters.isPremium;
   if (filters.authorId) query.authorId = new Types.ObjectId(filters.authorId);
 
-  // Default: only show active signals unless specifically filtered
+  // Default: only show active (published) signals unless specifically filtered
   if (!filters.status) {
     query.status = 'active';
   }
 
   const signals = await Signal_Model.find(query)
     .populate('authorId', 'name userProfileUrl')
-    .sort({ isFeatured: -1, createdAt: -1 })
+    .sort({ isFeatured: -1, publishedAt: -1, createdAt: -1 })
     .skip(skip)
     .limit(limit);
 
@@ -229,13 +261,21 @@ const get_signals = async (
 
 /**
  * Get single signal by ID
+ * Only returns published signals (status = 'active') unless status is explicitly filtered
  */
-const get_signal_by_id = async (signalId: string) => {
+const get_signal_by_id = async (signalId: string, includeUnpublished = false) => {
   if (!Types.ObjectId.isValid(signalId)) {
     throw new AppError('Invalid signal ID', httpStatus.BAD_REQUEST);
   }
 
-  const signal = await Signal_Model.findById(signalId)
+  const query: Record<string, unknown> = { _id: new Types.ObjectId(signalId) };
+  
+  // Only filter by status if not including unpublished (public access)
+  if (!includeUnpublished) {
+    query.status = 'active';
+  }
+
+  const signal = await Signal_Model.findById(query)
     .populate('authorId', 'name userProfileUrl');
 
   if (!signal) {
@@ -291,6 +331,51 @@ const increment_view = async (signalId: string) => {
 };
 
 /**
+ * Publish scheduled signals whose scheduled time has arrived
+ * Called by cron job to automatically transition scheduled signals to active
+ */
+const publish_scheduled_signals = async () => {
+  const now = new Date();
+
+  // Find all scheduled signals whose scheduledAt time has passed
+  const signalsToPublish = await Signal_Model.find({
+    status: 'scheduled',
+    scheduledAt: { $lte: now },
+  });
+
+  if (signalsToPublish.length === 0) {
+    return { published: 0, errors: 0 };
+  }
+
+  let publishedCount = 0;
+  let errorCount = 0;
+
+  for (const signal of signalsToPublish) {
+    try {
+      // Update signal status to active and set publishedAt
+      await Signal_Model.findByIdAndUpdate(signal._id, {
+        status: 'active',
+        publishedAt: now,
+      });
+
+      // Update master stats (increment totalSignals)
+      await Master_Model.findOneAndUpdate(
+        { accountId: signal.authorId },
+        { $inc: { totalSignals: 1 } }
+      );
+
+      publishedCount++;
+    } catch (error: any) {
+      errorCount++;
+      // Log error but continue processing other signals
+      console.error(`Failed to publish signal ${signal._id}: ${error.message}`);
+    }
+  }
+
+  return { published: publishedCount, errors: errorCount, total: signalsToPublish.length };
+};
+
+/**
  * Admin feature a signal
  */
 const toggle_featured_signal = async (signalId: string, isFeatured: boolean) => {
@@ -320,5 +405,6 @@ export const signal_services = {
   get_signal_by_id,
   get_my_signals,
   increment_view,
+  publish_scheduled_signals,
   toggle_featured_signal,
 };

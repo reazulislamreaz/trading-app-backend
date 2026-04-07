@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-export const createSignalSchema = z.object({
+// Base schema without publish validation (for updates)
+export const signalBaseFields = z.object({
   title: z.string().min(3).max(255),
   description: z.string().max(5000).optional(),
   assetType: z.enum(['forex', 'crypto', 'stocks', 'indices', 'commodities']),
@@ -16,9 +17,59 @@ export const createSignalSchema = z.object({
   isPremium: z.boolean().optional(),
   tags: z.array(z.string()).max(10).optional(),
   externalChartUrl: z.string().url().optional().or(z.literal('')),
+  publishType: z.enum(['instant', 'scheduled']).default('instant'),
+  scheduledAt: z.string().datetime().optional(),
 });
 
-export const updateSignalSchema = createSignalSchema.partial();
+// Create schema with validation for scheduled publish
+export const createSignalSchema = signalBaseFields.superRefine((data, ctx) => {
+  // If publishType is 'scheduled', scheduledAt is required and must be in the future
+  if (data.publishType === 'scheduled') {
+    if (!data.scheduledAt) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'scheduledAt is required when publishType is scheduled',
+        path: ['scheduledAt'],
+      });
+    } else {
+      const scheduledDate = new Date(data.scheduledAt);
+      if (isNaN(scheduledDate.getTime())) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'scheduledAt must be a valid ISO 8601 datetime',
+          path: ['scheduledAt'],
+        });
+      } else if (scheduledDate <= new Date()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'scheduledAt must be in the future',
+          path: ['scheduledAt'],
+        });
+      }
+    }
+  }
+});
+
+// Update schema (partial - all fields optional)
+export const updateSignalSchema = signalBaseFields.partial().superRefine((data, ctx) => {
+  // If updating to scheduled publish, validate scheduledAt
+  if (data.publishType === 'scheduled' && data.scheduledAt) {
+    const scheduledDate = new Date(data.scheduledAt);
+    if (isNaN(scheduledDate.getTime())) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'scheduledAt must be a valid ISO 8601 datetime',
+        path: ['scheduledAt'],
+      });
+    } else if (scheduledDate <= new Date()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'scheduledAt must be in the future',
+        path: ['scheduledAt'],
+      });
+    }
+  }
+});
 
 export const closeSignalSchema = z.object({
   resultPnl: z.number().nullable().optional(),
@@ -30,9 +81,10 @@ export const signalQuerySchema = z.object({
   limit: z.coerce.number().min(1).max(100).optional(),
   assetType: z.enum(['forex', 'crypto', 'stocks', 'indices', 'commodities']).optional(),
   signalType: z.enum(['long', 'short']).optional(),
-  status: z.enum(['active', 'closed', 'expired', 'canceled']).optional(),
+  status: z.enum(['draft', 'scheduled', 'active', 'closed', 'expired', 'canceled']).optional(),
   isPremium: z.coerce.boolean().optional(),
   authorId: z.string().optional(),
+  publishType: z.enum(['instant', 'scheduled']).optional(),
 });
 
 export const signal_validations = {

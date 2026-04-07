@@ -59,11 +59,18 @@ Enum signal_type {
   short
 }
 
+Enum publish_type {
+  instant [note: 'Publish immediately']
+  scheduled [note: 'Publish at a scheduled time']
+}
+
 Enum signal_status {
-  active
-  closed
-  expired
-  canceled
+  draft [note: 'Signal is saved but not visible to users']
+  scheduled [note: 'Signal is scheduled for future publish']
+  active [note: 'Signal is published and visible to users']
+  closed [note: 'Signal has been closed by the master']
+  expired [note: 'Signal has expired']
+  canceled [note: 'Signal was canceled/deleted']
 }
 
 Enum signal_timeframe {
@@ -282,6 +289,9 @@ Table signals {
 
   // Signal state
   status signal_status [default: 'active', not null]
+  publish_type publish_type [default: 'instant', not null, note: 'instant = publish now, scheduled = publish later']
+  scheduled_at timestamp [note: 'When the signal should be automatically published (for scheduled signals)']
+  published_at timestamp [note: 'When the signal was actually published']
   is_premium boolean [default: false, not null, note: 'true = requires paid subscription to view']
   is_featured boolean [default: false, not null, note: 'highlighted by Admin']
 
@@ -491,9 +501,11 @@ Ref: notifications.account_id > accounts.id
 
 // signals:
 //   COMPOUND: (author_id, status), (author_id, created_at DESC)
-//   INDEX: asset_type, signal_type, status, is_premium, is_featured
-//   COMPOUND: (asset_type, status), (signal_type, status)
+//   INDEX: asset_type, signal_type, status, is_premium, is_featured, publish_type, scheduled_at, published_at
+//   COMPOUND: (asset_type, status), (signal_type, status), (status, published_at DESC), (status, scheduled_at ASC)
 //   INDEX: created_at DESC (feed ordering)
+//   NOTE: Only signals with status='active' are visible to end users
+//   NOTE: scheduled signals have status='scheduled' and are published by cron job when scheduled_at <= now()
 
 // signal_media:
 //   INDEX: signal_id, sort_order

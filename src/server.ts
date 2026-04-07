@@ -7,6 +7,7 @@ import databaseConnection from "./app/configs/database";
 import runAllSeeds from "./app/utils/seed";
 import { scheduleSignalUsageReset } from "./app/utils/signal_usage_reset";
 import { scheduleExpiryNotifications } from "./app/utils/subscription_notifications";
+import { scheduleSignalPublish } from "./app/utils/signal_publish_scheduler";
 
 async function main() {
     // Validate database URL
@@ -26,6 +27,7 @@ async function main() {
     // Initialize scheduled tasks
     scheduleSignalUsageReset();
     scheduleExpiryNotifications();
+    scheduleSignalPublish();
 
     const server = http.createServer(app);
 

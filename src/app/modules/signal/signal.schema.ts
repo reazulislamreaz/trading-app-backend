@@ -1,9 +1,10 @@
 import { model, Schema, Types } from 'mongoose';
 
 export type SignalType = 'long' | 'short';
-export type SignalStatus = 'active' | 'closed' | 'expired' | 'canceled';
+export type SignalStatus = 'draft' | 'scheduled' | 'active' | 'closed' | 'expired' | 'canceled';
 export type AssetType = 'forex' | 'crypto' | 'stocks' | 'indices' | 'commodities';
 export type Timeframe = 'm1' | 'm5' | 'm15' | 'm30' | 'h1' | 'h4' | 'd1' | 'w1' | 'mn1';
+export type PublishType = 'instant' | 'scheduled';
 
 export interface ISignal {
   authorId: Types.ObjectId;
@@ -26,6 +27,9 @@ export interface ISignal {
 
   // Signal state
   status: SignalStatus;
+  publishType: PublishType;
+  scheduledAt: Date | null;
+  publishedAt: Date | null;
   isPremium: boolean;
   isFeatured: boolean;
 
@@ -74,7 +78,18 @@ const signalSchema = new Schema<ISignal>(
     takeProfit3: { type: Number, default: null },
 
     // Signal state
-    status: { type: String, enum: ['active', 'closed', 'expired', 'canceled'], default: 'active' },
+    status: { 
+      type: String, 
+      enum: ['draft', 'scheduled', 'active', 'closed', 'expired', 'canceled'], 
+      default: 'active' 
+    },
+    publishType: { 
+      type: String, 
+      enum: ['instant', 'scheduled'], 
+      default: 'instant' 
+    },
+    scheduledAt: { type: Date, default: null },
+    publishedAt: { type: Date, default: null },
     isPremium: { type: Boolean, default: false },
     isFeatured: { type: Boolean, default: false },
 
@@ -107,5 +122,7 @@ signalSchema.index({ signalType: 1, status: 1 });
 signalSchema.index({ isPremium: 1 });
 signalSchema.index({ isFeatured: 1 });
 signalSchema.index({ createdAt: -1 });
+signalSchema.index({ status: 1, publishedAt: -1 });
+signalSchema.index({ status: 1, scheduledAt: 1 });
 
 export const Signal_Model = model<ISignal>('signal', signalSchema);
