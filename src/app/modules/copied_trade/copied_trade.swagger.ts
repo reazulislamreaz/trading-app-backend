@@ -4,6 +4,7 @@ export const copiedTradeSwaggerDocs = {
       tags: ['Copy Trades'],
       summary: 'Copy a signal to your trade journal',
       description: 'Records the user\'s intent to copy a signal. Creates a pending trade entry that can later be logged with a result.',
+      security: [{ bearerAuth: [] }],
       parameters: [
         {
           name: 'signalId',
@@ -26,6 +27,7 @@ export const copiedTradeSwaggerDocs = {
       tags: ['Copy Trades'],
       summary: 'Log a trade result',
       description: 'Submit the actual execution result for a previously copied signal. Requires entry/exit price and outcome.',
+      security: [{ bearerAuth: [] }],
       requestBody: {
         required: true,
         content: {
@@ -61,6 +63,7 @@ export const copiedTradeSwaggerDocs = {
       tags: ['Copy Trades'],
       summary: 'Get my trade journal',
       description: 'Retrieve your trade history with filters. Includes summary stats (win rate, total PnL).',
+      security: [{ bearerAuth: [] }],
       parameters: [
         { name: 'page', in: 'query', schema: { type: 'number', example: 1 } },
         { name: 'limit', in: 'query', schema: { type: 'number', example: 20 } },
@@ -80,6 +83,7 @@ export const copiedTradeSwaggerDocs = {
     get: {
       tags: ['Copy Trades'],
       summary: 'Get single trade detail',
+      security: [{ bearerAuth: [] }],
       parameters: [
         { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
       ],
@@ -105,6 +109,7 @@ export const copiedTradeSwaggerDocs = {
       tags: ['Copy Trades'],
       summary: 'Cancel a pending copy',
       description: 'Remove a pending trade entry before logging a result.',
+      security: [{ bearerAuth: [] }],
       parameters: [
         { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
       ],
@@ -120,6 +125,7 @@ export const copiedTradeSwaggerDocs = {
       tags: ['Copy Trades'],
       summary: 'Get copiers of my signal (Master only)',
       description: 'View which users copied a specific signal. Only the signal author can access this.',
+      security: [{ bearerAuth: [] }],
       parameters: [
         { name: 'signalId', in: 'path', required: true, schema: { type: 'string' } },
         { name: 'page', in: 'query', schema: { type: 'number', example: 1 } },
