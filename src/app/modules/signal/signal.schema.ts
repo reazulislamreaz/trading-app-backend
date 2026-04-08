@@ -43,6 +43,7 @@ export interface ISignal {
   likeCount: number;
   bookmarkCount: number;
   commentCount: number;
+  copierCount: number;
 
   // Metadata
   tags: string[];
@@ -103,6 +104,7 @@ const signalSchema = new Schema<ISignal>(
     likeCount: { type: Number, default: 0 },
     bookmarkCount: { type: Number, default: 0 },
     commentCount: { type: Number, default: 0 },
+    copierCount: { type: Number, default: 0 },
 
     // Metadata
     tags: { type: [String], default: [] },
@@ -124,5 +126,6 @@ signalSchema.index({ isFeatured: 1 });
 signalSchema.index({ createdAt: -1 });
 signalSchema.index({ status: 1, publishedAt: -1 });
 signalSchema.index({ status: 1, scheduledAt: 1 });
+signalSchema.index({ copierCount: -1 });
 
 export const Signal_Model = model<ISignal>('signal', signalSchema);

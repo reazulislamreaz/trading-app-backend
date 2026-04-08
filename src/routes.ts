@@ -11,6 +11,7 @@ import adminRouter from './app/modules/admin/admin.route';
 import contributionRouter from './app/modules/contribution/contribution.route';
 import leaderboardRouter from './app/modules/leaderboard/leaderboard.route';
 import topTradersRouter from './app/modules/top-traders/top_traders.route';
+import copiedTradeRouter from './app/modules/copied_trade/copied_trade.route';
 
 const appRouter = Router();
 
@@ -26,6 +27,9 @@ const moduleRoutes = [
     { path: '/masters', route: masterRouter },
     { path: '/follow', route: followRouter },
     { path: '/notifications', route: notificationRouter },
+
+    // Copy trading & journal modules
+    { path: '/copied-trades', route: copiedTradeRouter },
 
     // Ranking & engagement modules
     { path: '/contributions', route: contributionRouter },

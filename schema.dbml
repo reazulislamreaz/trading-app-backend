@@ -102,6 +102,8 @@ Enum notification_type {
   payment_failed
   master_approved
   system_announcement
+  signal_copied
+  trade_result_logged
 }
 
 // ============================================================
@@ -305,6 +307,7 @@ Table signals {
   like_count integer [default: 0, not null]
   bookmark_count integer [default: 0, not null]
   comment_count integer [default: 0, not null]
+  copier_count integer [default: 0, not null, note: 'Number of users who copied this signal']
 
   // Metadata
   tags jsonb [default: '[]', note: 'array of string tags']
@@ -434,6 +437,38 @@ Table notifications {
 }
 
 // ============================================================
+// copied_trades - User copy-trade intent and trade journal entries
+// Tracks when a user copies a signal and logs their actual execution result
+// ============================================================
+Table copied_trades {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [not null, ref: > accounts.id, note: 'User who copied the signal']
+  signal_id uuid [not null, ref: > signals.id, note: 'Signal that was copied']
+  master_id uuid [not null, ref: > accounts.id, note: 'Master Trader who authored the signal']
+
+  status varchar(20) [default: 'pending', not null, note: 'pending | completed | failed']
+
+  // Copy intent
+  copied_at timestamp [default: `now()`, not null, note: 'When the user clicked Copy Trade']
+
+  // Trade log (filled when user reports result)
+  entry_price decimal(18, 8) [note: 'Actual entry price filled by user']
+  exit_price decimal(18, 8) [note: 'Actual exit price filled by user']
+  lot_size decimal(18, 4) [note: 'Trade size / lot size']
+  result_pnl decimal(10, 2) [note: 'Actual profit/loss in currency units']
+  outcome varchar(20) [note: 'win | loss | breakeven']
+  notes text [note: 'User notes about the trade execution']
+  screenshot_url varchar(500) [note: 'Screenshot of trade from their platform']
+  external_platform varchar(50) [note: 'Platform used for execution (e.g., binance, mt4, mt5)']
+
+  // Timestamps
+  logged_at timestamp [note: 'When the trade result was logged']
+
+  created_at timestamp [default: `now()`, not null]
+  updated_at timestamp [default: `now()`, not null]
+}
+
+// ============================================================
 // RELATIONSHIPS
 // ============================================================
 
@@ -467,6 +502,11 @@ Ref: follows.master_id > accounts.id
 
 // Notifications
 Ref: notifications.account_id > accounts.id
+
+// Copy trade relationships
+Ref: copied_trades.user_id > accounts.id
+Ref: copied_trades.signal_id > signals.id
+Ref: copied_trades.master_id > accounts.id
 
 // ============================================================
 // UNIQUE CONSTRAINTS & INDEXES (documented for reference)
@@ -536,3 +576,13 @@ Ref: notifications.account_id > accounts.id
 
 // notifications:
 //   COMPOUND: (account_id, is_read, created_at DESC) - inbox query
+
+// signals (additional):
+//   INDEX: copier_count DESC (most copied signals)
+
+// copied_trades:
+//   UNIQUE: (user_id, signal_id) - one copy per user per signal
+//   COMPOUND: (user_id, status) - filter pending/completed
+//   INDEX: signal_id (master copier queries)
+//   COMPOUND: (master_id, status) - master copier stats
+//   INDEX: user_id, created_at DESC (trade journal ordering)

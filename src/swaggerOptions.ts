@@ -11,6 +11,7 @@ import { adminSwaggerDocs } from "./app/modules/admin/admin.swagger";
 import { contributionSwaggerDocs } from "./app/modules/contribution/contribution.swagger";
 import { leaderboardSwaggerDocs } from "./app/modules/leaderboard/leaderboard.swagger";
 import { topTradersSwaggerDocs } from "./app/modules/top-traders/top_traders.swagger";
+import { copiedTradeSwaggerDocs } from "./app/modules/copied_trade/copied_trade.swagger";
 
 export const swaggerOptions = {
   definition: {
@@ -33,6 +34,7 @@ export const swaggerOptions = {
       ...contributionSwaggerDocs,
       ...leaderboardSwaggerDocs,
       ...topTradersSwaggerDocs,
+      ...copiedTradeSwaggerDocs,
     },
     servers:
       configs.env === "production"
@@ -102,7 +104,7 @@ export const swaggerOptions = {
         },
         NotificationType: {
           type: "string",
-          enum: ["new_signal", "subscription_active", "subscription_expiring", "subscription_canceled", "payment_succeeded", "payment_failed", "master_approved", "master_rejected", "system_announcement"],
+          enum: ["new_signal", "subscription_active", "subscription_expiring", "subscription_canceled", "payment_succeeded", "payment_failed", "master_approved", "master_rejected", "system_announcement", "signal_copied", "trade_result_logged"],
           description: "Type of notification",
           example: "new_signal",
         },
@@ -140,6 +142,7 @@ export const swaggerOptions = {
       { name: "Contributions", description: "User engagement tracking and top contributor rankings" },
       { name: "Leaderboard", description: "Overall platform leaderboard with composite scoring" },
       { name: "Top Traders", description: "Top Master Traders ranked by trading performance" },
+      { name: "Copy Trades", description: "Copy trade intent tracking and trade journal for logging results" },
       { name: "Admin", description: "Admin dashboard — analytics, broadcasts, role management, payment logs" },
     ],
   },
