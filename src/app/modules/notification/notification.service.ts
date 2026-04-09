@@ -207,7 +207,7 @@ const broadcast_announcement = async (
   }
 
   const notifications = accounts.map((account) => ({
-    accountId: account._id,
+    accountId: account._id.toString(),
     type: 'system_announcement' as NotificationType,
     title,
     message,
@@ -215,9 +215,10 @@ const broadcast_announcement = async (
     data: {},
   }));
 
-  await Notification_Model.insertMany(notifications);
+  // Use the centralized bulk creator (has error handling)
+  const result = await create_many_notifications(notifications);
 
-  return { sentCount: accounts.length };
+  return { sentCount: result.createdCount };
 };
 
 export const notification_services = {
