@@ -4,6 +4,7 @@ import { configs } from '../../configs';
 import { Subscription_Model } from './subscription.schema';
 import { Payment_Model } from './payment.schema';
 import { Account_Model } from '../auth/auth.schema';
+import { notification_services } from '../notification/notification.service';
 import logger from '../../configs/logger';
 
 // @ts-ignore - Stripe types issue with v22
@@ -137,7 +138,7 @@ async function handleCheckoutCompleted(session: any) {
 
     if (!accountId || !planId || !subscriptionId) {
       logger.error('❌ Missing metadata in checkout session:', { accountId, planId, subscriptionId });
-      return;
+      throw new Error('Missing required metadata in checkout.session.completed: accountId, planId, or subscriptionId');
     }
 
     // Retrieve full subscription from Stripe
@@ -169,6 +170,21 @@ async function handleCheckoutCompleted(session: any) {
       subscriptionStatus: stripeSubscription.status,
       subscriptionTier: planId.split('_')[0],
       subscriptionExpiresAt: new Date(stripeSubscription.current_period_end * 1000),
+    });
+
+    // Notify user about successful subscription activation
+    const planName = planId.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    await notification_services.create_notification({
+      accountId,
+      type: 'subscription_active',
+      title: 'Subscription Activated! 🎉',
+      message: `Your ${planName} subscription is now active. Enjoy all your trading features!`,
+      link: '/subscription',
+      data: {
+        subscriptionId,
+        planId,
+        trialEndsAt: stripeSubscription.trial_end ? new Date(stripeSubscription.trial_end * 1000).toISOString() : null,
+      },
     });
 
     logger.info(`✅ Subscription created for account: ${accountId}, plan: ${planId}`);
@@ -233,6 +249,34 @@ async function handleInvoicePaid(invoice: any) {
       subscriptionExpiresAt: new Date(invoice.period_end * 1000),
     });
 
+    // Notify user about successful renewal
+    await notification_services.create_notification({
+      accountId: subscription.accountId.toString(),
+      type: 'subscription_active',
+      title: 'Subscription Renewed ✅',
+      message: `Your subscription has been renewed successfully. Billing period ends ${new Date(invoice.period_end * 1000).toLocaleDateString()}.`,
+      link: '/subscription',
+      data: {
+        subscriptionId: subscription._id.toString(),
+        amount: invoice.amount_paid,
+        currency: invoice.currency,
+      },
+    });
+
+    // Notify about successful payment
+    await notification_services.create_notification({
+      accountId: subscription.accountId.toString(),
+      type: 'payment_succeeded',
+      title: 'Payment Received 💰',
+      message: `Payment of ${(invoice.amount_paid / 100).toFixed(2)} ${invoice.currency?.toUpperCase() || 'USD'} was processed successfully.`,
+      link: '/subscription/payments',
+      data: {
+        paymentIntentId,
+        amount: invoice.amount_paid,
+        currency: invoice.currency,
+      },
+    });
+
     logger.info(`✅ Payment recorded: ${paymentIntentId}, amount: ${invoice.amount_paid}`);
   } catch (error) {
     logger.error('❌ Error in handleInvoicePaid:', error);
@@ -257,6 +301,19 @@ async function handleInvoiceFailed(invoice: any) {
     // Update account
     await Account_Model.findByIdAndUpdate(subscription.accountId, {
       subscriptionStatus: 'past_due',
+    });
+
+    // Notify user about failed payment
+    await notification_services.create_notification({
+      accountId: subscription.accountId.toString(),
+      type: 'payment_failed',
+      title: 'Payment Failed ⚠️',
+      message: `Your subscription payment failed. Please update your payment method to avoid service interruption.`,
+      link: '/subscription/billing',
+      data: {
+        subscriptionId: subscription._id.toString(),
+        invoiceId: invoice.id,
+      },
     });
 
     logger.warn(`⚠️  Payment failed for subscription: ${subscriptionId}`);
@@ -331,6 +388,19 @@ async function handleSubscriptionDeleted(stripeSub: any) {
       subscriptionStatus: 'canceled',
       subscriptionTier: 'free',
       subscriptionExpiresAt: null,
+    });
+
+    // Notify user about subscription cancellation
+    await notification_services.create_notification({
+      accountId: subscription.accountId.toString(),
+      type: 'subscription_canceled',
+      title: 'Subscription Canceled',
+      message: `Your subscription has been canceled. You've been moved to the Free plan. You can resubscribe anytime to regain full access.`,
+      link: '/subscription',
+      data: {
+        subscriptionId: subscription._id.toString(),
+        canceledAt: new Date().toISOString(),
+      },
     });
 
     logger.info(`❌ Subscription canceled: ${stripeSub.id}`);

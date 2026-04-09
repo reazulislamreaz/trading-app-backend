@@ -4,6 +4,7 @@ import { Master_Model } from './master.schema';
 import { Account_Model } from '../auth/auth.schema';
 import { TMasterProfile } from './master.interface';
 import { Types } from 'mongoose';
+import { notification_services } from '../notification/notification.service';
 
 /**
  * Create or update master profile for the authenticated user
@@ -132,6 +133,37 @@ const approve_master = async (masterId: string, adminId: string, isApproved: boo
 
   const updated = await Master_Model.findByIdAndUpdate(masterId, updates, { new: true })
     .populate('accountId', 'name email');
+
+  // Notify the applicant about the approval decision
+  if (updated && updated.accountId) {
+    const applicantId = (updated.accountId as any)._id.toString();
+
+    if (isApproved) {
+      await notification_services.create_notification({
+        accountId: applicantId,
+        type: 'master_approved',
+        title: 'Master Trader Approved! 🎉',
+        message: 'Congratulations! Your Master Trader application has been approved. You can now create and publish trading signals.',
+        link: '/masters/profile',
+        data: {
+          approvedAt: updates.approvedAt?.toString(),
+          approvedBy: adminId,
+        },
+      });
+    } else {
+      await notification_services.create_notification({
+        accountId: applicantId,
+        type: 'master_rejected',
+        title: 'Master Trader Application Reviewed',
+        message: 'Your Master Trader application has been reviewed. Unfortunately, it was not approved at this time. Please contact support for more details.',
+        link: '/support',
+        data: {
+          reviewedAt: new Date().toISOString(),
+          reviewedBy: adminId,
+        },
+      });
+    }
+  }
 
   return updated;
 };

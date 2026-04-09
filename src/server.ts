@@ -35,7 +35,9 @@ async function main() {
     server.timeout = 30000; // 30 seconds
 
     // Use server.listen() instead of app.listen() so server.close() works for graceful shutdown
-    server.listen(Number(configs.port) || 3000, configs.ip.backend_ip as string, () => {
+    // server.listen(Number(configs.port) || 3000, configs.ip.backend_ip as string, () => {
+
+    server.listen(Number(configs.port) || 3000, () => {
         console.log(`Server listening on port ${configs.port}`);
         logger.info(`🚀 Server started on port ${configs.port} (${configs.env})`);
     });

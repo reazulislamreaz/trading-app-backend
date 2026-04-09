@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { Account_Model } from '../modules/auth/auth.schema';
 import { Subscription_Model } from '../modules/subscription/subscription.schema';
+import { notification_services } from '../modules/notification/notification.service';
 import sendMail from './mail_sender';
 import logger from '../configs/logger';
 
@@ -10,9 +11,10 @@ import logger from '../configs/logger';
 const EXPIRY_CHECK_DAYS = [7, 3, 1];
 
 /**
- * Send expiry notification email to user
+ * Send expiry notification email to user AND create an in-app notification
  */
 const sendExpiryNotification = async (
+  accountId: string,
   email: string,
   name: string,
   daysRemaining: number,
@@ -42,6 +44,7 @@ const sendExpiryNotification = async (
     </p>
   `;
 
+  // Send email (blocking to ensure delivery)
   await sendMail(
     {
       to: email,
@@ -50,8 +53,22 @@ const sendExpiryNotification = async (
       htmlBody,
       name,
     },
-    true // blocking to ensure delivery
+    true
   );
+
+  // Create in-app notification as well
+  await notification_services.create_notification({
+    accountId,
+    type: 'subscription_expiring',
+    title: daysRemaining === 1 ? 'Subscription Expiring Tomorrow ⚠️' : `Subscription Expiring in ${daysRemaining} Days`,
+    message: `Your ${tier} subscription will expire in ${daysRemaining} day${daysRemaining > 1 ? 's' : ''}. Renew now to keep access to all features.`,
+    link: '/subscription/renew',
+    data: {
+      daysRemaining,
+      tier,
+      expiresAt: new Date(Date.now() + daysRemaining * 24 * 60 * 60 * 1000).toISOString(),
+    },
+  });
 };
 
 /**
@@ -94,7 +111,13 @@ const checkExpiringSubscriptions = async () => {
 
         const tier = sub.planId.split('_')[0] || account.subscriptionTier || 'subscription';
 
-        await sendExpiryNotification(account.email, account.name, days, tier);
+        await sendExpiryNotification(
+          account._id.toString(),
+          account.email,
+          account.name,
+          days,
+          tier
+        );
 
         // Mark as notified
         await Subscription_Model.findByIdAndUpdate(sub._id, {

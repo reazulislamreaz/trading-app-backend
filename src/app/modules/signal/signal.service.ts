@@ -7,6 +7,7 @@ import { Types } from 'mongoose';
 import { contribution_services } from '../contribution/contribution.service';
 import { notification_services } from '../notification/notification.service';
 import { follow_services } from '../follow/follow.service';
+import logger from '../../configs/logger';
 
 interface TCreateSignal {
   title: string;
@@ -106,9 +107,55 @@ const create_signal = async (accountId: string, data: TCreateSignal) => {
 
     // Track contribution for signal creation
     contribution_services.track_contribution(accountId, 'create_signal', signal._id.toString());
+
+    // Notify followers about the new signal
+    await notifyFollowersOfNewSignal(signal._id.toString(), accountId);
   }
 
   return signal;
+};
+
+/**
+ * Notify all followers of a Master Trader about a new signal.
+ * Used for both instant and scheduled signal publishing.
+ */
+const notifyFollowersOfNewSignal = async (signalId: string, masterAccountId: string) => {
+  try {
+    const followers = await follow_services.get_followers(masterAccountId, 1, 10000);
+
+    if (!followers.data || followers.data.length === 0) {
+      return { notifiedCount: 0 };
+    }
+
+    // Populate signal details for notification content
+    const signal = await Signal_Model.findById(signalId);
+    if (!signal) return { notifiedCount: 0 };
+
+    const master = await Account_Model.findById(masterAccountId).select('name');
+    const masterName = master?.name || 'Master Trader';
+
+    const notifications = followers.data.map((follow: any) => ({
+      accountId: follow.followerId._id.toString(),
+      type: 'new_signal' as const,
+      title: `New signal from ${masterName}`,
+      message: signal.title,
+      link: `/signals/${signalId}`,
+      data: {
+        signalId,
+        symbol: signal.symbol,
+        signalType: signal.signalType,
+      },
+    }));
+
+    const result = await notification_services.create_many_notifications(notifications);
+    logger.info(
+      `📢 Notified ${result.createdCount}/${notifications.length} followers about new signal ${signalId}`
+    );
+    return result;
+  } catch (error: any) {
+    logger.error(`❌ Failed to notify followers for signal ${signalId}: ${error.message}`);
+    return { notifiedCount: 0 };
+  }
 };
 
 /**
@@ -452,7 +499,6 @@ const publish_scheduled_signals = async () => {
 
   let publishedCount = 0;
   let errorCount = 0;
-  let notifiedCount = 0;
 
   for (const signal of signalsToPublish) {
     try {
@@ -471,38 +517,8 @@ const publish_scheduled_signals = async () => {
       // Track contribution for scheduled signal publish
       contribution_services.track_contribution(signal.authorId.toString(), 'create_signal', signal._id.toString());
 
-      // Notify followers about the new signal
-      try {
-        // Populate authorId to get master name
-        const populatedSignal = await Signal_Model.findById(signal._id).populate('authorId', 'name');
-        if (!populatedSignal) continue;
-
-        const followers = await follow_services.get_followers(populatedSignal.authorId._id.toString(), 1, 10000);
-        
-        if (followers.data && followers.data.length > 0) {
-          const masterName = (populatedSignal.authorId as any).name || 'Master Trader';
-          
-          const notifications = followers.data.map((follow: any) => ({
-            accountId: follow.followerId._id.toString(),
-            type: 'new_signal' as const,
-            title: `New signal from ${masterName}`,
-            message: populatedSignal.title,
-            link: `/signals/${populatedSignal._id.toString()}`,
-            data: {
-              signalId: populatedSignal._id.toString(),
-              symbol: populatedSignal.symbol,
-              signalType: populatedSignal.signalType,
-            },
-          }));
-
-          const { Notification_Model } = await import('../notification/notification.schema');
-          await Notification_Model.insertMany(notifications);
-          notifiedCount += notifications.length;
-        }
-      } catch (notifyError: any) {
-        // Log notification error but don't fail the publish
-        console.error(`Failed to send notifications for signal ${signal._id}: ${notifyError.message}`);
-      }
+      // Notify followers about the new signal (reuses the same helper)
+      await notifyFollowersOfNewSignal(signal._id.toString(), signal.authorId.toString());
 
       publishedCount++;
     } catch (error: any) {
@@ -512,7 +528,7 @@ const publish_scheduled_signals = async () => {
     }
   }
 
-  return { published: publishedCount, errors: errorCount, total: signalsToPublish.length, notified: notifiedCount };
+  return { published: publishedCount, errors: errorCount, total: signalsToPublish.length };
 };
 
 /**

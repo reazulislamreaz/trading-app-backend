@@ -74,22 +74,17 @@ const copy_signal = async (userId: string, signalId: string) => {
   });
 
   // Notify the master that someone copied their signal
-  try {
-    await notification_services.create_notification({
-      accountId: signal.authorId.toString(),
-      type: 'signal_copied',
-      title: 'Signal Copied',
-      message: `A trader copied your signal: ${signal.title}`,
-      link: `/signals/${signalId}`,
-      data: {
-        signalId,
-        copiedTradeId: copiedTrade._id.toString(),
-      },
-    });
-  } catch (err) {
-    // Log but don't fail the copy operation
-    console.error(`Failed to notify master about copy: ${err}`);
-  }
+  await notification_services.create_notification({
+    accountId: signal.authorId.toString(),
+    type: 'signal_copied',
+    title: 'Signal Copied',
+    message: `A trader copied your signal: ${signal.title}`,
+    link: `/signals/${signalId}`,
+    data: {
+      signalId,
+      copiedTradeId: copiedTrade._id.toString(),
+    },
+  });
 
   return copiedTrade;
 };
@@ -135,23 +130,19 @@ const log_trade = async (userId: string, data: TLogTrade) => {
   );
 
   // Notify the master about the trade result
-  try {
-    const outcomeEmoji = data.outcome === 'win' ? '🟢' : data.outcome === 'loss' ? '🔴' : '🟡';
-    await notification_services.create_notification({
-      accountId: copiedTrade.masterId.toString(),
-      type: 'trade_result_logged',
-      title: `Trade Result ${outcomeEmoji}`,
-      message: `A copier logged a ${data.outcome} on your signal: ${data.signalId}`,
-      link: `/signals/${data.signalId}`,
-      data: {
-        signalId: data.signalId,
-        outcome: data.outcome,
-        resultPnl: data.resultPnl,
-      },
-    });
-  } catch (err) {
-    console.error(`Failed to notify master about trade result: ${err}`);
-  }
+  const outcomeEmoji = data.outcome === 'win' ? '🟢' : data.outcome === 'loss' ? '🔴' : '🟡';
+  await notification_services.create_notification({
+    accountId: copiedTrade.masterId.toString(),
+    type: 'trade_result_logged',
+    title: `Trade Result ${outcomeEmoji}`,
+    message: `A copier logged a ${data.outcome} on your signal: ${data.signalId}`,
+    link: `/signals/${data.signalId}`,
+    data: {
+      signalId: data.signalId,
+      outcome: data.outcome,
+      resultPnl: data.resultPnl,
+    },
+  });
 
   return updated;
 };

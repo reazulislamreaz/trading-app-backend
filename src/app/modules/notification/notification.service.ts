@@ -2,6 +2,7 @@ import { AppError } from '../../utils/app_error';
 import httpStatus from 'http-status';
 import { Notification_Model, NotificationType } from './notification.schema';
 import { Types } from 'mongoose';
+import logger from '../../configs/logger';
 
 interface TCreateNotification {
   accountId: string;
@@ -13,19 +14,55 @@ interface TCreateNotification {
 }
 
 /**
- * Create a notification for a user
+ * Create a single notification safely.
+ * Catches and logs errors internally so callers are not blocked.
+ * Returns the created notification or null on failure.
  */
 const create_notification = async (data: TCreateNotification) => {
-  const notification = await Notification_Model.create({
-    accountId: new Types.ObjectId(data.accountId),
-    type: data.type,
-    title: data.title,
-    message: data.message,
-    link: data.link || '',
-    data: data.data || {},
-  });
+  try {
+    const notification = await Notification_Model.create({
+      accountId: new Types.ObjectId(data.accountId),
+      type: data.type,
+      title: data.title,
+      message: data.message,
+      link: data.link || '',
+      data: data.data || {},
+    });
+    return notification;
+  } catch (error: any) {
+    logger.error(
+      `❌ Notification creation failed for user ${data.accountId} [${data.type}]: ${error.message}`
+    );
+    return null;
+  }
+};
 
-  return notification;
+/**
+ * Create multiple notifications in bulk safely.
+ * Uses insertMany for efficiency, catches errors per-batch.
+ * Returns the count of successfully created notifications.
+ */
+const create_many_notifications = async (notifications: TCreateNotification[]) => {
+  if (notifications.length === 0) return { createdCount: 0 };
+
+  try {
+    const docs = notifications.map((n) => ({
+      accountId: new Types.ObjectId(n.accountId),
+      type: n.type,
+      title: n.title,
+      message: n.message,
+      link: n.link || '',
+      data: n.data || {},
+    }));
+
+    const created = await Notification_Model.insertMany(docs, { ordered: false });
+    return { createdCount: created.length };
+  } catch (error: any) {
+    logger.error(
+      `❌ Bulk notification creation failed (${notifications.length} notifications): ${error.message}`
+    );
+    return { createdCount: 0 };
+  }
 };
 
 /**
@@ -185,6 +222,7 @@ const broadcast_announcement = async (
 
 export const notification_services = {
   create_notification,
+  create_many_notifications,
   get_my_notifications,
   update_notification,
   mark_as_read,

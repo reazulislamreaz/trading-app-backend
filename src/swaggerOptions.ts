@@ -38,8 +38,8 @@ export const swaggerOptions = {
     },
     servers:
       configs.env === "production"
-        ? [{ url: configs.jwt.front_end_url || "https://your-api.com" }, { url: "http://10.10.11.30:5000" }]
-        : [{ url: "http://10.10.11.30:5000" }, { url: "https://your-api.com" }],
+        ? [{ url: configs.jwt.front_end_url || "https://your-api.com" }, { url: "https://reaz5000.syedbipul.me" }]
+        : [{ url: "https://reaz5000.syedbipul.me" }, { url: "https://your-api.com" }],
     components: {
       securitySchemes: {
         bearerAuth: {
