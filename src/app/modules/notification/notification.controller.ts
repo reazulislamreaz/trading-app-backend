@@ -21,47 +21,47 @@ const get_my_notifications = catchAsync(async (req, res) => {
   manageResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Notifications retrieved',
+    message: req.query.isRead === 'true' ? 'Unread notifications retrieved' : 'Notifications retrieved',
     data: result.data,
     unreadCount: result.unreadCount,
     meta: result.meta,
   });
 });
 
-const mark_as_read = catchAsync(async (req, res) => {
-  const accountId = req.user!.userId;
-  const result = await notification_services.update_notification(accountId, req.params.id as string, { isRead: true });
-
-  manageResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'Notification marked as read',
-    data: result,
-  });
-});
-
 const update_notification = catchAsync(async (req, res) => {
   const accountId = req.user!.userId;
-  const { isRead } = req.body;
+  const notificationId = req.params.id;
+  const body = req.body || {};
+  const { isRead } = body;
 
-  const result = await notification_services.update_notification(accountId, req.params.id as string, { isRead });
+  // If no ID provided and isRead is true, mark all as read
+  if (!notificationId && isRead === true) {
+    const result = await notification_services.mark_all_as_read(accountId);
+
+    return manageResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: 'All notifications marked as read',
+      data: result,
+    });
+  }
+
+  // If no ID provided but body has data, return error
+  if (!notificationId) {
+    return manageResponse(res, {
+      success: false,
+      statusCode: httpStatus.BAD_REQUEST,
+      message: 'Notification ID is required for single notification update',
+      data: null,
+    });
+  }
+
+  const result = await notification_services.update_notification(accountId, notificationId, { isRead });
 
   manageResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Notification updated',
-    data: result,
-  });
-});
-
-const mark_all_as_read = catchAsync(async (req, res) => {
-  const accountId = req.user!.userId;
-  const result = await notification_services.mark_all_as_read(accountId);
-
-  manageResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: 'All notifications marked as read',
+    message: result.isRead ? 'Notification marked as read' : 'Notification updated',
     data: result,
   });
 });
@@ -93,8 +93,6 @@ const get_unread_count = catchAsync(async (req, res) => {
 export const notification_controllers = {
   get_my_notifications,
   update_notification,
-  mark_as_read,
-  mark_all_as_read,
   delete_notification,
   get_unread_count,
 };
