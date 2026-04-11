@@ -33,7 +33,7 @@ const corsOrigins = configs.allowed_origins
   : [configs.jwt.front_end_url || 'http://localhost:5000'];
 
 app.use(cors({
-    origin: corsOrigins.length > 0 ? corsOrigins : 'http://localhost:5000',
+    origin: corsOrigins.length > 0 ? corsOrigins : 'http://localhost:3000',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
