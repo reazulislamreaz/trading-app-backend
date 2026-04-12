@@ -30,7 +30,7 @@ app.use(helmet()); // Add security headers
 // CORS configuration
 const corsOrigins = configs.allowed_origins
   ? configs.allowed_origins.split(',').filter(Boolean)
-  : [configs.jwt.front_end_url || 'http://localhost:5000'];
+  : [configs.jwt.front_end_url || 'http://localhost:3000'];
 
 app.use(cors({
     origin: corsOrigins.length > 0 ? corsOrigins : 'http://localhost:3000',
