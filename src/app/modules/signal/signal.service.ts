@@ -35,6 +35,7 @@ interface TCloseSignal {
 }
 
 interface TSignalFilters {
+  search?: string;
   assetType?: string;
   signalType?: string;
   status?: string;
@@ -270,6 +271,15 @@ const get_signals = async (
 ) => {
   const skip = (page - 1) * limit;
   const query: Record<string, unknown> = {};
+
+  // Search by symbol or title
+  if (filters.search && typeof filters.search === 'string' && filters.search.trim()) {
+    const searchTerm = filters.search.trim();
+    query.$or = [
+      { symbol: { $regex: searchTerm, $options: 'i' } },
+      { title: { $regex: searchTerm, $options: 'i' } },
+    ];
+  }
 
   if (filters.assetType) query.assetType = filters.assetType;
   if (filters.signalType) query.signalType = filters.signalType;

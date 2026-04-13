@@ -44,6 +44,7 @@ const get_all_signals = catchAsync(async (req, res) => {
   const limit = Number(req.query.limit) || 20;
 
   const filters: Record<string, unknown> = {};
+  if (req.query.search) filters.search = req.query.search;
   if (req.query.assetType) filters.assetType = req.query.assetType;
   if (req.query.signalType) filters.signalType = req.query.signalType;
   if (req.query.status) filters.status = req.query.status;
