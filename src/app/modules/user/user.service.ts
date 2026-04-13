@@ -51,6 +51,7 @@ const get_all_users_from_db = async (query: Record<string, unknown>) => {
   // Build filter object
   const filter: Record<string, unknown> = {
     isDeleted: false, // Exclude soft-deleted users
+    role: UserRole.USER,
   };
 
   // Search by name or email
