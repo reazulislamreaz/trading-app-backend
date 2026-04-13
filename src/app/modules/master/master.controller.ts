@@ -30,10 +30,14 @@ const get_my_profile = catchAsync(async (req, res) => {
 const get_all_masters = catchAsync(async (req, res) => {
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 10;
-  const filters: { isFeatured?: boolean } = {};
+  const filters: { isFeatured?: boolean; search?: string } = {};
 
   if (req.query.isFeatured !== undefined) {
     filters.isFeatured = req.query.isFeatured === 'true';
+  }
+
+  if (req.query.search && typeof req.query.search === 'string') {
+    filters.search = req.query.search;
   }
 
   const result = await master_services.get_all_masters(page, limit, filters);

@@ -51,13 +51,44 @@ const get_master_profile = async (accountId: string) => {
 const get_all_masters = async (
   page: number = 1,
   limit: number = 10,
-  filters: { isFeatured?: boolean } = {}
+  filters: { isFeatured?: boolean; search?: string } = {}
 ) => {
   const skip = (page - 1) * limit;
 
   const query: Record<string, unknown> = {};
   if (filters.isFeatured !== undefined) {
     query.isFeatured = filters.isFeatured;
+  }
+
+  // Search by name or email (through populated accountId)
+  if (filters.search && typeof filters.search === 'string' && filters.search.trim()) {
+    const searchTerm = filters.search.trim();
+    
+    // First, find account IDs that match the search
+    const matchingAccounts = await Account_Model.find({
+      $or: [
+        { name: { $regex: searchTerm, $options: 'i' } },
+        { email: { $regex: searchTerm, $options: 'i' } },
+      ],
+    }).select('_id');
+    
+    const accountIds = matchingAccounts.map(acc => acc._id);
+    
+    // If no matching accounts, return empty result
+    if (accountIds.length === 0) {
+      return {
+        data: [],
+        meta: {
+          page,
+          limit,
+          total: 0,
+          totalPages: 0,
+        },
+      };
+    }
+    
+    // Filter masters by matching account IDs
+    query.accountId = { $in: accountIds };
   }
 
   const masters = await Master_Model.find(query)
