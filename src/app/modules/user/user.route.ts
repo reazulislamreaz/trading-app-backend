@@ -18,5 +18,6 @@ userRoute.patch(
 userRoute.get("/", auth("ADMIN"), user_controllers.get_all_users);
 userRoute.get("/:id", auth("ADMIN"), user_controllers.get_single_user);
 userRoute.patch("/status/:id", auth("ADMIN"), user_controllers.update_user_status);
+userRoute.delete("/:id", auth("ADMIN"), user_controllers.delete_user);
 
 export default userRoute;

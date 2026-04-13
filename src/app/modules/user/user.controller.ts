@@ -46,7 +46,7 @@ const update_user_status = catchAsync(async (req, res) => {
     manageResponse(res, {
       success: false,
       statusCode: httpStatus.BAD_REQUEST,
-      message: "Status is required in request body. Use 'ACTIVE' or 'SUSPENDED'",
+      message: "Status is required in request body. Use 'ACTIVE', 'INACTIVE', or 'SUSPENDED'",
       data: null,
     });
     return;
@@ -57,8 +57,21 @@ const update_user_status = catchAsync(async (req, res) => {
   manageResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: `User status updated to ${status}`,
+    message: `User status updated to ${result.status}`,
     data: result,
+  });
+});
+
+const delete_user = catchAsync(async (req, res) => {
+  const { id } = req.params;
+
+  const result = await user_services.soft_delete_user(id as string);
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result.message,
+    data: null,
   });
 });
 
@@ -67,4 +80,5 @@ export const user_controllers = {
   get_all_users,
   get_single_user,
   update_user_status,
+  delete_user,
 };

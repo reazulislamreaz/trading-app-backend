@@ -207,5 +207,39 @@ export const userSwaggerDocs = {
                 404: { description: "User not found" },
             },
         },
+        delete: {
+            tags: ["Users"],
+            summary: "Delete user",
+            description: "Soft delete a user by ID. This operation marks the user as deleted rather than permanently removing them. Requires ADMIN role.",
+            security: [{ bearerAuth: [] }],
+            parameters: [
+                {
+                    name: "id",
+                    in: "path",
+                    required: true,
+                    schema: { type: "string" },
+                    description: "User ID to delete",
+                },
+            ],
+            responses: {
+                200: {
+                    description: "User deleted successfully",
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    success: { type: "boolean", example: true },
+                                    message: { type: "string", example: "User deleted successfully" },
+                                    data: { type: "null", example: null },
+                                },
+                            },
+                        },
+                    },
+                },
+                401: { description: "Unauthorized — ADMIN role required" },
+                404: { description: "User not found" },
+            },
+        },
     },
 };
