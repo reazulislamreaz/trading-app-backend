@@ -100,7 +100,6 @@ Enum notification_type {
   subscription_canceled
   payment_succeeded
   payment_failed
-  master_approved
   system_announcement
   signal_copied
   trade_result_logged
@@ -160,9 +159,6 @@ Table masters {
   bio text [note: 'Trading experience, strategy, background']
   specialties jsonb [default: '[]', note: 'array of specializations e.g., ["forex", "scalping"]']
   years_of_experience integer [default: 0, not null]
-  is_approved boolean [default: false, not null, note: 'Admin must approve before posting signals']
-  approved_at timestamp [note: 'When Admin approved this master']
-  approved_by uuid [ref: > accounts.id, note: 'Admin who approved']
 
   // Reputation metrics (computed from signals)
   total_signals integer [default: 0, not null]
@@ -519,7 +515,7 @@ Ref: copied_trades.master_id > accounts.id
 
 // masters:
 //   UNIQUE: account_id
-//   INDEX: is_approved, is_featured
+//   INDEX: is_featured
 
 // token_blacklist:
 //   UNIQUE: token

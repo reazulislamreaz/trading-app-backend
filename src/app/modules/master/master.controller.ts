@@ -30,11 +30,8 @@ const get_my_profile = catchAsync(async (req, res) => {
 const get_all_masters = catchAsync(async (req, res) => {
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 10;
-  const filters: { isApproved?: boolean; isFeatured?: boolean } = {};
+  const filters: { isFeatured?: boolean } = {};
 
-  if (req.query.isApproved !== undefined) {
-    filters.isApproved = req.query.isApproved === 'true';
-  }
   if (req.query.isFeatured !== undefined) {
     filters.isFeatured = req.query.isFeatured === 'true';
   }
@@ -57,22 +54,6 @@ const get_single_master = catchAsync(async (req, res) => {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Master details retrieved',
-    data: result,
-  });
-});
-
-const approve_master = catchAsync(async (req, res) => {
-  const adminId = req.user!.userId;
-  const result = await master_services.approve_master(
-    req.params.id as string,
-    adminId,
-    req.body.isApproved
-  );
-
-  manageResponse(res, {
-    success: true,
-    statusCode: httpStatus.OK,
-    message: result?.isApproved ? 'Master approved' : 'Master rejected',
     data: result,
   });
 });
@@ -108,7 +89,6 @@ export const master_controllers = {
   get_my_profile,
   get_all_masters,
   get_single_master,
-  approve_master,
   toggle_featured,
   get_my_stats,
 };

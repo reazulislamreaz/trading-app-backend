@@ -6,11 +6,6 @@ const masterProfileSchema = z.object({
   yearsOfExperience: z.number().min(0).max(50).optional(),
 });
 
-const approveMasterSchema = z.object({
-  isApproved: z.boolean(),
-});
-
 export const master_validations = {
   masterProfileSchema,
-  approveMasterSchema,
 };

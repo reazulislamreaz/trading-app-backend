@@ -9,7 +9,7 @@ export const notificationSwaggerDocs = {
         { name: "page", in: "query", schema: { type: "integer", default: 1 } },
         { name: "limit", in: "query", schema: { type: "integer", default: 20 } },
         { name: "isRead", in: "query", schema: { type: "boolean" }, description: "Filter by read status. Use `true` for unread only." },
-        { name: "type", in: "query", schema: { type: "string", enum: ["new_signal", "subscription_active", "subscription_expiring", "subscription_canceled", "payment_succeeded", "payment_failed", "master_approved", "master_rejected", "system_announcement"] } },
+        { name: "type", in: "query", schema: { type: "string", enum: ["new_signal", "subscription_active", "subscription_expiring", "subscription_canceled", "payment_succeeded", "payment_failed", "system_announcement"] } },
       ],
       responses: {
         200: {

@@ -7,8 +7,6 @@ export type NotificationType =
   | 'subscription_canceled'
   | 'payment_succeeded'
   | 'payment_failed'
-  | 'master_approved'
-  | 'master_rejected'
   | 'system_announcement'
   | 'signal_copied'
   | 'trade_result_logged';
@@ -35,8 +33,6 @@ const notificationSchema = new Schema<INotification>(
         'subscription_canceled',
         'payment_succeeded',
         'payment_failed',
-        'master_approved',
-        'master_rejected',
         'system_announcement',
         'signal_copied',
         'trade_result_logged',

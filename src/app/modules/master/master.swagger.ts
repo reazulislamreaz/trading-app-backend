@@ -3,11 +3,10 @@ export const masterSwaggerDocs = {
     get: {
       tags: ["Masters"],
       summary: "List all masters (public)",
-      description: "Get paginated list of Master Traders. Filterable by approval status and featured status. Admins can use this same endpoint with `?isApproved=true` to view approved masters.",
+      description: "Get paginated list of Master Traders. Filterable by featured status.",
       parameters: [
         { name: "page", in: "query", schema: { type: "integer", default: 1 } },
         { name: "limit", in: "query", schema: { type: "integer", default: 10 } },
-        { name: "isApproved", in: "query", schema: { type: "boolean" }, description: "Filter by approval status" },
         { name: "isFeatured", in: "query", schema: { type: "boolean" }, description: "Filter by featured status" },
       ],
       responses: {
@@ -37,7 +36,6 @@ export const masterSwaggerDocs = {
                         bio: { type: "string", example: "10+ years in forex trading..." },
                         specialties: { type: "array", items: { type: "string" }, example: ["forex", "scalping"] },
                         yearsOfExperience: { type: "integer", example: 10 },
-                        isApproved: { type: "boolean", example: true },
                         totalSignals: { type: "integer", example: 156 },
                         winRate: { type: "number", example: 72.5 },
                         avgPnl: { type: "number", example: 3.2 },
@@ -154,37 +152,6 @@ export const masterSwaggerDocs = {
             },
           },
         },
-        404: { description: "Master profile not found" },
-      },
-    },
-  },
-
-  "/api/v1/masters/approve/{id}": {
-    patch: {
-      tags: ["Masters (Admin)"],
-      summary: "Approve or reject a master",
-      description: "Admin only. Approve or reject a Master Trader application.",
-      security: [{ bearerAuth: [] }],
-      parameters: [
-        { name: "id", in: "path", required: true, schema: { type: "string" } },
-      ],
-      requestBody: {
-        required: true,
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              required: ["isApproved"],
-              properties: {
-                isApproved: { type: "boolean", example: true, description: "true to approve, false to reject" },
-              },
-            },
-          },
-        },
-      },
-      responses: {
-        200: { description: "Master approved/rejected" },
-        403: { description: "Admin access required" },
         404: { description: "Master profile not found" },
       },
     },

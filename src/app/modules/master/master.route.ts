@@ -21,7 +21,6 @@ masterRouter.get('/profile/me', auth('MASTER'), master_controllers.get_my_profil
 masterRouter.get('/stats', auth('MASTER'), master_controllers.get_my_stats);
 
 // Admin-only routes
-masterRouter.patch('/approve/:id', auth('ADMIN'), master_controllers.approve_master);
 masterRouter.patch('/featured/:id', auth('ADMIN'), master_controllers.toggle_featured);
 
 export default masterRouter;

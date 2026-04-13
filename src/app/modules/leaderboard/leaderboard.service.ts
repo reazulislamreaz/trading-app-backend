@@ -78,8 +78,8 @@ const get_leaderboard = async (
   const { startDate } = getDateRange(timeframe);
   const skip = (page - 1) * limit;
 
-  // Filter: only approved masters
-  const masters = await Master_Model.find({ isApproved: true })
+  // Get all masters
+  const masters = await Master_Model.find()
     .populate('accountId', 'name email userProfileUrl')
     .sort({ followerCount: -1, winRate: -1 })
     .skip(skip)
@@ -87,8 +87,8 @@ const get_leaderboard = async (
 
   // Get total count and stats in parallel
   const [total, allMastersForNormalization] = await Promise.all([
-    Master_Model.countDocuments({ isApproved: true }),
-    Master_Model.find({ isApproved: true }),
+    Master_Model.countDocuments(),
+    Master_Model.find(),
   ]);
 
   if (masters.length === 0) {
@@ -183,15 +183,14 @@ const get_leaderboard = async (
 const get_user_rank = async (accountId: string) => {
   const master = await Master_Model.findOne({
     accountId: new Types.ObjectId(accountId),
-    isApproved: true,
   });
 
   if (!master) {
-    throw new AppError('Master profile not found or not approved', httpStatus.NOT_FOUND);
+    throw new AppError('Master profile not found', httpStatus.NOT_FOUND);
   }
 
-  // Get all approved masters to calculate rank
-  const allMasters = await Master_Model.find({ isApproved: true });
+  // Get all masters to calculate rank
+  const allMasters = await Master_Model.find();
 
   // Get max metrics for normalization
   const maxMetrics: NormalizedMetrics = {

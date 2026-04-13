@@ -4,7 +4,6 @@ import { Master_Model } from './master.schema';
 import { Account_Model } from '../auth/auth.schema';
 import { TMasterProfile } from './master.interface';
 import { Types } from 'mongoose';
-import { notification_services } from '../notification/notification.service';
 
 /**
  * Create or update master profile for the authenticated user
@@ -52,14 +51,11 @@ const get_master_profile = async (accountId: string) => {
 const get_all_masters = async (
   page: number = 1,
   limit: number = 10,
-  filters: { isApproved?: boolean; isFeatured?: boolean } = {}
+  filters: { isFeatured?: boolean } = {}
 ) => {
   const skip = (page - 1) * limit;
 
   const query: Record<string, unknown> = {};
-  if (filters.isApproved !== undefined) {
-    query.isApproved = filters.isApproved;
-  }
   if (filters.isFeatured !== undefined) {
     query.isFeatured = filters.isFeatured;
   }
@@ -99,73 +95,6 @@ const get_master_by_id = async (masterId: string) => {
   }
 
   return master;
-};
-
-/**
- * Admin approves or rejects a master
- */
-const approve_master = async (masterId: string, adminId: string, isApproved: boolean) => {
-  if (!Types.ObjectId.isValid(masterId)) {
-    throw new AppError('Invalid master ID', httpStatus.BAD_REQUEST);
-  }
-
-  // Verify admin
-  const admin = await Account_Model.findById(adminId);
-  if (!admin || admin.role !== 'ADMIN') {
-    throw new AppError('Unauthorized', httpStatus.FORBIDDEN);
-  }
-
-  const master = await Master_Model.findById(masterId);
-  if (!master) {
-    throw new AppError('Master profile not found', httpStatus.NOT_FOUND);
-  }
-
-  const updates: Record<string, unknown> = {
-    isApproved,
-    approvedBy: new Types.ObjectId(adminId),
-  };
-
-  if (isApproved) {
-    updates.approvedAt = new Date();
-  } else {
-    updates.approvedAt = null;
-  }
-
-  const updated = await Master_Model.findByIdAndUpdate(masterId, updates, { new: true })
-    .populate('accountId', 'name email');
-
-  // Notify the applicant about the approval decision
-  if (updated && updated.accountId) {
-    const applicantId = (updated.accountId as any)._id.toString();
-
-    if (isApproved) {
-      await notification_services.create_notification({
-        accountId: applicantId,
-        type: 'master_approved',
-        title: 'Master Trader Approved! 🎉',
-        message: 'Congratulations! Your Master Trader application has been approved. You can now create and publish trading signals.',
-        link: '/masters/profile',
-        data: {
-          approvedAt: updates.approvedAt?.toString(),
-          approvedBy: adminId,
-        },
-      });
-    } else {
-      await notification_services.create_notification({
-        accountId: applicantId,
-        type: 'master_rejected',
-        title: 'Master Trader Application Reviewed',
-        message: 'Your Master Trader application has been reviewed. Unfortunately, it was not approved at this time. Please contact support for more details.',
-        link: '/support',
-        data: {
-          reviewedAt: new Date().toISOString(),
-          reviewedBy: adminId,
-        },
-      });
-    }
-  }
-
-  return updated;
 };
 
 /**
@@ -213,7 +142,6 @@ export const master_services = {
   get_master_profile,
   get_all_masters,
   get_master_by_id,
-  approve_master,
   toggle_featured,
   get_master_stats,
 };

@@ -14,8 +14,6 @@ import { notification_services } from '../notification/notification.service';
 const get_platform_analytics = catchAsync(async (req, res) => {
   const totalUsers = await Account_Model.countDocuments({ role: 'USER' });
   const totalMasters = await Account_Model.countDocuments({ role: 'MASTER' });
-  const approvedMasters = await Master_Model.countDocuments({ isApproved: true });
-  const pendingMasters = await Master_Model.countDocuments({ isApproved: false });
   const activeSubscriptions = await Subscription_Model.countDocuments({ status: 'active' });
   const totalSignals = await Signal_Model.countDocuments();
   const activeSignals = await Signal_Model.countDocuments({ status: 'active' });
@@ -48,8 +46,6 @@ const get_platform_analytics = catchAsync(async (req, res) => {
       users: { total: totalUsers },
       masters: {
         total: totalMasters,
-        approved: approvedMasters,
-        pending: pendingMasters,
       },
       subscriptions: {
         active: activeSubscriptions,
@@ -90,11 +86,11 @@ const broadcast_announcement = catchAsync(async (req, res) => {
 
 // Manage user role (Admin can promote/demote)
 const change_user_role = catchAsync(async (req, res) => {
-  const { userId, role } = req.body;
+  const { userId, newRole } = req.body;
 
   const account = await Account_Model.findByIdAndUpdate(
     userId,
-    { role },
+    { role: newRole},
     { new: true }
   ).select('-password -twoFactorSecret -twoFactorBackupCodes -verificationCode -verificationCodeExpires -resetPasswordCode -resetPasswordExpire -lockedUntil');
 
@@ -108,10 +104,33 @@ const change_user_role = catchAsync(async (req, res) => {
     return;
   }
 
+  // Auto-create Master Profile when promoting to MASTER role
+  if (newRole === 'MASTER') {
+    const existingMasterProfile = await Master_Model.findOne({ accountId: userId });
+    
+    if (!existingMasterProfile) {
+      await Master_Model.create({
+        accountId: userId,
+        bio: '',
+        specialties: [],
+        yearsOfExperience: 0,
+        isApproved: true,
+        approvedAt: new Date(),
+        totalSignals: 0,
+        winningSignals: 0,
+        losingSignals: 0,
+        winRate: 0,
+        avgPnl: 0,
+        followerCount: 0,
+        isFeatured: false,
+      });
+    }
+  }
+
   manageResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: `User role changed to ${role}`,
+    message: `User role changed to ${newRole}`,
     data: account,
   });
 });

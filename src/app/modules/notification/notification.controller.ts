@@ -13,7 +13,8 @@ const get_my_notifications = catchAsync(async (req, res) => {
     filters.isRead = req.query.isRead === 'true';
   }
   if (req.query.type) {
-    filters.type = req.query.type as string;
+    const typeValue = req.query.type;
+    filters.type = Array.isArray(typeValue) ? String(typeValue[0]) : String(typeValue);
   }
 
   const result = await notification_services.get_my_notifications(accountId, page, limit, filters);
@@ -30,7 +31,7 @@ const get_my_notifications = catchAsync(async (req, res) => {
 
 const update_notification = catchAsync(async (req, res) => {
   const accountId = req.user!.userId;
-  const notificationId = req.params.id;
+  const notificationId = req.params.id as string | undefined;
   const body = req.body || {};
   const { isRead } = body;
 

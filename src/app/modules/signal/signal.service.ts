@@ -57,12 +57,6 @@ const create_signal = async (accountId: string, data: TCreateSignal) => {
     throw new AppError('Only Master Traders can create signals', httpStatus.FORBIDDEN);
   }
 
-  // Check if master is approved
-  const master = await Master_Model.findOne({ accountId });
-  if (!master || !master.isApproved) {
-    throw new AppError('Your Master profile has not been approved yet', httpStatus.FORBIDDEN);
-  }
-
   // Determine publish type and status
   const publishType = data.publishType || 'instant';
   let status: 'active' | 'scheduled' = 'active';

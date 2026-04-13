@@ -68,11 +68,6 @@ const get_all_users_from_db = async (query: Record<string, unknown>) => {
     filter.accountStatus = query.status.trim().toUpperCase();
   }
 
-  // Filter by role
-  if (query.role && typeof query.role === 'string' && query.role.trim()) {
-    filter.role = query.role.trim().toUpperCase();
-  }
-
   const users = await Account_Model.find(filter)
     .sort({ createdAt: -1 })
     .skip(skip)

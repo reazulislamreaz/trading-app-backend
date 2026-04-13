@@ -335,10 +335,10 @@ const get_master_copied_stats = async (masterId: string, timeframe: 'week' | 'mo
     throw new AppError('Invalid master ID', httpStatus.BAD_REQUEST);
   }
 
-  // Verify master exists and is approved
-  const master = await Master_Model.findOne({ accountId: new Types.ObjectId(masterId), isApproved: true });
+  // Verify master exists
+  const master = await Master_Model.findOne({ accountId: new Types.ObjectId(masterId) });
   if (!master) {
-    throw new AppError('Master not found or not approved', httpStatus.NOT_FOUND);
+    throw new AppError('Master not found', httpStatus.NOT_FOUND);
   }
 
   const dateFilter: Record<string, unknown> = {};

@@ -34,7 +34,6 @@ const getDateRange = (timeframe: TimeframeType): { startDate: Date; endDate: Dat
 
 /**
  * Get top traders ranked by win rate (primary metric for trading performance)
- * Only includes approved Master Traders
  * Supports `limit` param — use limit=3 for top-3 widget, default=10 for full list
  */
 const get_top_traders = async (
@@ -51,14 +50,14 @@ const get_top_traders = async (
   // Secondary sort by followerCount for tie-breaking
   sortOptions['followerCount'] = -1;
 
-  // Only approved masters
-  const masters = await Master_Model.find({ isApproved: true })
+  // Get all masters
+  const masters = await Master_Model.find()
     .populate('accountId', 'name email userProfileUrl')
     .sort(sortOptions)
     .skip(skip)
     .limit(limit);
 
-  const total = await Master_Model.countDocuments({ isApproved: true });
+  const total = await Master_Model.countDocuments();
 
   // Enrich with recent signal performance for context
   const enrichedMasters = await Promise.all(
@@ -109,7 +108,6 @@ const get_top_traders = async (
 const get_trader_performance = async (accountId: string) => {
   const master = await Master_Model.findOne({
     accountId: new Types.ObjectId(accountId),
-    isApproved: true,
   }).populate('accountId', 'name email userProfileUrl');
 
   if (!master) {
@@ -169,12 +167,10 @@ const get_trader_performance = async (accountId: string) => {
 const compare_traders = async (accountId1: string, accountId2: string) => {
   const trader1 = await Master_Model.findOne({
     accountId: new Types.ObjectId(accountId1),
-    isApproved: true,
   }).populate('accountId', 'name email userProfileUrl');
 
   const trader2 = await Master_Model.findOne({
     accountId: new Types.ObjectId(accountId2),
-    isApproved: true,
   }).populate('accountId', 'name email userProfileUrl');
 
   if (!trader1 || !trader2) {

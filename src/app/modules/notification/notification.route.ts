@@ -17,10 +17,11 @@ notificationRouter.get('/unread-count', notification_controllers.get_unread_coun
 notificationRouter.patch('/', notification_controllers.update_notification);
 
 // Backward compatibility: Keep old mark-all-read endpoint
-notificationRouter.patch('/mark-all-read', (req, res) => {
-  req.params.id = undefined;
+notificationRouter.patch('/mark-all-read', (req, res, next) => {
+  // Clear the id param and set body for mark-all-read behavior
+  (req.params as any).id = undefined;
   req.body = { isRead: true };
-  return notification_controllers.update_notification(req, res);
+  return notification_controllers.update_notification(req, res, next);
 });
 
 // PATCH /:id - Update single notification
