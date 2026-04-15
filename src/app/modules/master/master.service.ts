@@ -154,6 +154,9 @@ const toggle_featured = async (masterId: string, isFeatured: boolean) => {
  */
 const get_master_stats = async (accountId: string) => {
   const master = await Master_Model.findOne({ accountId });
+
+
+  console.log(master)
   if (!master) {
     throw new AppError('Master profile not found', httpStatus.NOT_FOUND);
   }

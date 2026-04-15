@@ -78,6 +78,7 @@ const toggle_featured = catchAsync(async (req, res) => {
 
 const get_my_stats = catchAsync(async (req, res) => {
   const accountId = req.user!.userId;
+  console.log(accountId)
   const result = await master_services.get_master_stats(accountId);
 
   manageResponse(res, {
