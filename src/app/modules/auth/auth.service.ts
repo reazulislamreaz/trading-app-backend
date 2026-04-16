@@ -221,12 +221,14 @@ const login_user_from_db = async (payload: TLoginPayload): Promise<LoginReturnTy
 /**
  * Get current user profile
  */
-const get_my_profile_from_db = async (email: string): Promise<{ account: Omit<TAccount, 'password'> }> => {
+const get_my_profile_from_db = async (email: string): Promise<Omit<TAccount, 'password'>> => {
   const account = await Account_Model.findOne({ email }).select('-password');
 
-  return {
-    account: account as Omit<TAccount, 'password'>,
-  };
+  if (!account) {
+    throw new AppError(AUTH_ERRORS.ACCOUNT_NOT_FOUND, httpStatus.NOT_FOUND);
+  }
+
+  return account as unknown as Omit<TAccount, 'password'>;
 };
 
 /**

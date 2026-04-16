@@ -61,19 +61,19 @@ authRoute.post("/refresh-token", auth_controllers.refresh_token);
 // Protected routes (require authentication)
 authRoute.get(
   "/me",
-  auth("ADMIN", "USER"),
+  auth("ADMIN", "USER", "MASTER"),
   auth_controllers.get_my_profile,
 );
 
 authRoute.post(
   "/logout",
-  auth("ADMIN", "USER"),
+  auth("ADMIN", "USER", "MASTER"),
   auth_controllers.logout_user,
 );
 
 authRoute.post(
   "/change-password",
-  auth("ADMIN", "USER"),
+  auth("ADMIN", "USER", "MASTER"),
   RequestValidator(authValidations.changePassword),
   auth_controllers.change_password,
 );
