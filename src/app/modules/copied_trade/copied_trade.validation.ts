@@ -2,10 +2,10 @@ import { z } from 'zod';
 
 export const logTradeSchema = z.object({
   signalId: z.string().min(1, 'Signal ID is required'),
-  entryPrice: z.number().positive('Entry price must be positive'),
-  exitPrice: z.number().positive('Exit price must be positive'),
-  lotSize: z.number().positive('Lot size must be positive').optional(),
-  resultPnl: z.number().optional(),
+  entryPrice: z.coerce.number().positive('Entry price must be positive'),
+  exitPrice: z.coerce.number().positive('Exit price must be positive'),
+  lotSize: z.coerce.number().positive('Lot size must be positive').optional(),
+  resultPnl: z.coerce.number().optional(),
   outcome: z.enum(['win', 'loss', 'breakeven']),
   notes: z.string().max(2000).optional().or(z.literal('')),
   screenshotUrl: z.string().url().optional().or(z.literal('')),

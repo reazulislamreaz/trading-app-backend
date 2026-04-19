@@ -22,6 +22,7 @@ const create_or_update_master_profile = async (
     throw new AppError('Only MASTER role users can create master profiles', httpStatus.FORBIDDEN);
   }
 
+
   const master = await Master_Model.findOneAndUpdate(
     { accountId },
     { ...profileData, accountId },

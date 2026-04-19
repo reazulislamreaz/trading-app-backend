@@ -8,13 +8,13 @@ export const signalBaseFields = z.object({
   symbol: z.string().min(1).max(20).toUpperCase(),
   signalType: z.enum(['long', 'short']),
   timeframe: z.enum(['m1', 'm5', 'm15', 'm30', 'h1', 'h4', 'd1', 'w1', 'mn1']),
-  entryPrice: z.number().positive(),
+  entryPrice: z.coerce.number().positive(),
   entryNotes: z.string().max(1000).optional(),
-  stopLoss: z.number().positive().nullable().optional(),
-  takeProfit1: z.number().positive().nullable().optional(),
-  takeProfit2: z.number().positive().nullable().optional(),
-  takeProfit3: z.number().positive().nullable().optional(),
-  isPremium: z.boolean().optional(),
+  stopLoss: z.coerce.number().positive().nullable().optional(),
+  takeProfit1: z.coerce.number().positive().nullable().optional(),
+  takeProfit2: z.coerce.number().positive().nullable().optional(),
+  takeProfit3: z.coerce.number().positive().nullable().optional(),
+  isPremium: z.coerce.boolean().optional(),
   tags: z.array(z.string()).max(10).optional(),
   externalChartUrl: z.string().url().optional().or(z.literal('')),
   publishType: z.enum(['instant', 'scheduled']).default('instant'),
@@ -72,7 +72,7 @@ export const updateSignalSchema = signalBaseFields.partial().superRefine((data, 
 });
 
 export const closeSignalSchema = z.object({
-  resultPnl: z.number().nullable().optional(),
+  resultPnl: z.coerce.number().nullable().optional(),
   closeNotes: z.string().max(1000).optional(),
 });
 
