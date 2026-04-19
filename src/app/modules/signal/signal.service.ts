@@ -312,7 +312,7 @@ const get_signals = async (
   apply_filters(query, filters);
 
   // Default for general list: only show active signals if no status specified
-  if (!filters.status) {
+  if (!filters.status || filters.status === "") {
     query.status = 'active';
   }
 
