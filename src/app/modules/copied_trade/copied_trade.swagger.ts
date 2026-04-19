@@ -65,8 +65,8 @@ export const copiedTradeSwaggerDocs = {
       description: 'Retrieve your trade history with filters. Includes summary stats (win rate, total PnL).',
       security: [{ bearerAuth: [] }],
       parameters: [
-        { name: 'page', in: 'query', schema: { type: 'number', example: 1 } },
-        { name: 'limit', in: 'query', schema: { type: 'number', example: 20 } },
+        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
         { name: 'status', in: 'query', schema: { type: 'string', enum: ['pending', 'completed', 'failed'] } },
         { name: 'outcome', in: 'query', schema: { type: 'string', enum: ['win', 'loss', 'breakeven'] } },
         { name: 'masterId', in: 'query', schema: { type: 'string' }, description: 'Filter by master' },
@@ -128,8 +128,8 @@ export const copiedTradeSwaggerDocs = {
       security: [{ bearerAuth: [] }],
       parameters: [
         { name: 'signalId', in: 'path', required: true, schema: { type: 'string' } },
-        { name: 'page', in: 'query', schema: { type: 'number', example: 1 } },
-        { name: 'limit', in: 'query', schema: { type: 'number', example: 20 } },
+        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
       ],
       responses: {
         200: { description: 'Signal copiers retrieved with stats' },

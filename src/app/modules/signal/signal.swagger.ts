@@ -7,9 +7,11 @@ export const signalSwaggerDocs = {
       parameters: [
         { name: "page", in: "query", schema: { type: "integer", default: 1 } },
         { name: "limit", in: "query", schema: { type: "integer", default: 20, maximum: 100 } },
+        { name: "search", in: "query", schema: { type: "string" }, description: "Search by signal title or symbol" },
         { name: "assetType", in: "query", schema: { type: "string", enum: ["forex", "crypto", "stocks", "indices", "commodities"] } },
         { name: "signalType", in: "query", schema: { type: "string", enum: ["long", "short"] } },
-        { name: "status", in: "query", schema: { type: "string", enum: ["active", "closed", "expired", "canceled"] } },
+        { name: "status", in: "query", schema: { type: "string", enum: ["draft", "scheduled", "active", "closed", "expired", "canceled"] } },
+        { name: "publishType", in: "query", schema: { type: "string", enum: ["instant", "scheduled"] } },
         { name: "isPremium", in: "query", schema: { type: "boolean" } },
         { name: "authorId", in: "query", schema: { type: "string" }, description: "Filter by Master Trader ID" },
       ],

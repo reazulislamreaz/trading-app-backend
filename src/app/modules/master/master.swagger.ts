@@ -8,6 +8,7 @@ export const masterSwaggerDocs = {
         { name: "page", in: "query", schema: { type: "integer", default: 1 } },
         { name: "limit", in: "query", schema: { type: "integer", default: 10 } },
         { name: "isFeatured", in: "query", schema: { type: "boolean" }, description: "Filter by featured status" },
+        { name: "search", in: "query", schema: { type: "string" }, description: "Search by master name" },
       ],
       responses: {
         200: {

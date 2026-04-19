@@ -154,7 +154,9 @@ const toggle_featured = async (masterId: string, isFeatured: boolean) => {
  * Get master statistics
  */
 const get_master_stats = async (accountId: string) => {
-  const master = await Master_Model.findOne({ accountId });
+
+  console.log(accountId)
+  const master = await Master_Model.findOne({ accountId: new Types.ObjectId(accountId) });
 
 
   console.log(master)
