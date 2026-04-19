@@ -60,7 +60,7 @@ const create_signal = async (accountId: string, data: TCreateSignal) => {
 
   // Determine publish type and status
   const publishType = data.publishType || 'instant';
-  let status: 'active' | 'scheduled' = 'active';
+  let status: SignalStatus = 'active';
   let scheduledAt: Date | null = null;
   let publishedAt: Date | null = null;
 
@@ -161,7 +161,7 @@ const notifyFollowersOfNewSignal = async (signalId: string, masterAccountId: str
 const update_signal = async (
   accountId: string,
   signalId: string,
-  data: Partial<TCreateSignal> & TCloseSignal & { status?: SignalStatus }
+  data: Partial<TCreateSignal> & TCloseSignal & { status?: SignalStatus | 'won' | 'lost' }
 ) => {
   if (!Types.ObjectId.isValid(signalId)) {
     throw new AppError('Invalid signal ID', httpStatus.BAD_REQUEST);
@@ -176,8 +176,20 @@ const update_signal = async (
     throw new AppError('You can only update your own signals', httpStatus.FORBIDDEN);
   }
 
+  // Normalize status for 'won' or 'lost' virtual statuses
+  let finalStatus = data.status;
+  let finalResultPnl = data.resultPnl;
+
+  if (finalStatus === ('won' as any)) {
+    finalStatus = 'closed';
+    if (finalResultPnl === undefined || finalResultPnl === null) finalResultPnl = 1;
+  } else if (finalStatus === ('lost' as any)) {
+    finalStatus = 'closed';
+    if (finalResultPnl === undefined || finalResultPnl === null) finalResultPnl = -1;
+  }
+
   // Detect close action: status set to 'closed' with resultPnl provided
-  const isClosing = data.status === 'closed' && (data.resultPnl !== undefined && data.resultPnl !== null);
+  const isClosing = finalStatus === 'closed' && (finalResultPnl !== undefined && finalResultPnl !== null);
 
   if (isClosing) {
     const master = await Master_Model.findOne({ accountId });
@@ -185,15 +197,15 @@ const update_signal = async (
     const updates: Record<string, unknown> = {
       status: 'closed',
       closedAt: new Date(),
-      resultPnl: data.resultPnl,
+      resultPnl: finalResultPnl,
       closeNotes: data.closeNotes || '',
     };
 
     const updated = await Signal_Model.findByIdAndUpdate(signalId, updates, { new: true });
 
     // Update master win/loss stats
-    if (master && data.resultPnl !== null && data.resultPnl !== undefined) {
-      const incField = data.resultPnl >= 0 ? 'winningSignals' : 'losingSignals';
+    if (master && finalResultPnl !== null && finalResultPnl !== undefined) {
+      const incField = finalResultPnl >= 0 ? 'winningSignals' : 'losingSignals';
       await Master_Model.findOneAndUpdate(
         { accountId },
         { $inc: { [incField]: 1 } }
@@ -211,7 +223,7 @@ const update_signal = async (
       }
 
       // Track contribution for closing signal
-      const activityType = data.resultPnl >= 0 ? 'close_signal_profit' : 'close_signal_loss';
+      const activityType = finalResultPnl >= 0 ? 'close_signal_profit' : 'close_signal_loss';
       contribution_services.track_contribution(accountId, activityType, signalId);
     }
 
@@ -219,13 +231,13 @@ const update_signal = async (
   }
 
   // Regular update (not closing)
-  if (signal.status !== 'active') {
-    throw new AppError('Cannot update closed or expired signals', httpStatus.BAD_REQUEST);
+  if (signal.status !== 'active' && signal.status !== 'scheduled') {
+    throw new AppError('Cannot update closed, expired or canceled signals', httpStatus.BAD_REQUEST);
   }
 
   const updated = await Signal_Model.findByIdAndUpdate(
     signalId,
-    { $set: data },
+    { $set: { ...data, status: finalStatus, resultPnl: finalResultPnl } },
     { new: true }
   );
 
@@ -249,29 +261,15 @@ const delete_signal = async (accountId: string, signalId: string) => {
     throw new AppError('You can only delete your own signals', httpStatus.FORBIDDEN);
   }
 
-  await Signal_Model.findByIdAndUpdate(signalId, { status: 'canceled' });
+  await Signal_Model.findByIdAndUpdate(signalId, { status: 'expired' });
 
-  // Decrement master total signals
-  await Master_Model.findOneAndUpdate(
-    { accountId },
-    { $inc: { totalSignals: -1 } }
-  );
-
-  return { message: 'Signal deleted' };
+  return { message: 'Signal deleted successfully' };
 };
 
 /**
- * Get signals with filters and pagination
- * Only returns published signals (status = 'active') for public access
+ * Shared filtering logic for signal queries
  */
-const get_signals = async (
-  page: number = 1,
-  limit: number = 20,
-  filters: TSignalFilters = {}
-) => {
-  const skip = (page - 1) * limit;
-  const query: Record<string, unknown> = {};
-
+const apply_filters = (query: any, filters: TSignalFilters) => {
   // Search by symbol or title
   if (filters.search && typeof filters.search === 'string' && filters.search.trim()) {
     const searchTerm = filters.search.trim();
@@ -283,11 +281,37 @@ const get_signals = async (
 
   if (filters.assetType) query.assetType = filters.assetType;
   if (filters.signalType) query.signalType = filters.signalType;
-  if (filters.status) query.status = filters.status;
+  
+  // Handle status filtering (support virtual statuses won/lost)
+  if (filters.status) {
+    if (filters.status === "all") {
+      // No status filter applied
+    } else if (filters.status === 'won') {
+      query.status = 'closed';
+      query.resultPnl = { $gte: 0 };
+    } else if (filters.status === 'lost') {
+      query.status = 'closed';
+      query.resultPnl = { $lt: 0 };
+    } else {
+      query.status = filters.status;
+    }
+  }
+
   if (filters.isPremium !== undefined) query.isPremium = filters.isPremium;
   if (filters.authorId) query.authorId = new Types.ObjectId(filters.authorId);
+};
 
-  // Default: only show active (published) signals unless specifically filtered
+const get_signals = async (
+  page: number = 1,
+  limit: number = 20,
+  filters: TSignalFilters = {}
+) => {
+  const skip = (page - 1) * limit;
+  const query: Record<string, unknown> = {};
+
+  apply_filters(query, filters);
+
+  // Default for general list: only show active signals if no status specified
   if (!filters.status) {
     query.status = 'active';
   }
@@ -311,25 +335,17 @@ const get_signals = async (
   };
 };
 
-/**
- * Get single signal by ID
- * Only returns published signals (status = 'active') unless status is explicitly filtered
- */
 const get_signal_by_id = async (signalId: string, includeUnpublished = false) => {
   if (!Types.ObjectId.isValid(signalId)) {
     throw new AppError('Invalid signal ID', httpStatus.BAD_REQUEST);
   }
 
-  const query: Record<string, unknown> = { _id: new Types.ObjectId(signalId) };
-  
-  // Only filter by status if not including unpublished (public access)
+  const query: any = { _id: new Types.ObjectId(signalId) };
   if (!includeUnpublished) {
     query.status = 'active';
   }
 
-  const signal = await Signal_Model.findById(query)
-    .populate('authorId', 'name userProfileUrl');
-
+  const signal = await Signal_Model.findOne(query).populate('authorId', 'name userProfileUrl');
   if (!signal) {
     throw new AppError('Signal not found', httpStatus.NOT_FOUND);
   }
@@ -337,21 +353,16 @@ const get_signal_by_id = async (signalId: string, includeUnpublished = false) =>
   return signal;
 };
 
-/**
- * Get master's own signals
- */
 const get_my_signals = async (
   accountId: string,
   page: number = 1,
   limit: number = 20,
-  status?: string
+  filters: TSignalFilters = {}
 ) => {
   const skip = (page - 1) * limit;
   const query: Record<string, unknown> = { authorId: new Types.ObjectId(accountId) };
 
-  if (status) {
-    query.status = status;
-  }
+  apply_filters(query, filters);
 
   const signals = await Signal_Model.find(query)
     .sort({ createdAt: -1 })
@@ -372,7 +383,7 @@ const get_my_signals = async (
 };
 
 /**
- * Increment view count (called when a user views a signal)
+ * Increment view count
  */
 const increment_view = async (signalId: string, viewerId?: string) => {
   if (!Types.ObjectId.isValid(signalId)) {
@@ -381,7 +392,6 @@ const increment_view = async (signalId: string, viewerId?: string) => {
 
   await Signal_Model.findByIdAndUpdate(signalId, { $inc: { viewCount: 1 } });
 
-  // Track contribution for viewing (if viewer is authenticated)
   if (viewerId) {
     contribution_services.track_contribution(viewerId, 'view_signal', signalId);
   }
@@ -401,8 +411,6 @@ const like_signal = async (accountId: string, signalId: string) => {
   }
 
   await Signal_Model.findByIdAndUpdate(signalId, { $inc: { likeCount: 1 } });
-
-  // Track contribution for liking
   contribution_services.track_contribution(accountId, 'like_signal', signalId);
 
   return { message: 'Signal liked successfully' };
@@ -422,7 +430,6 @@ const unlike_signal = async (accountId: string, signalId: string) => {
   }
 
   await Signal_Model.findByIdAndUpdate(signalId, { $inc: { likeCount: -1 } });
-
   return { message: 'Signal unliked successfully' };
 };
 
@@ -440,15 +447,13 @@ const bookmark_signal = async (accountId: string, signalId: string) => {
   }
 
   await Signal_Model.findByIdAndUpdate(signalId, { $inc: { bookmarkCount: 1 } });
-
-  // Track contribution for bookmarking
   contribution_services.track_contribution(accountId, 'bookmark_signal', signalId);
 
   return { message: 'Signal bookmarked successfully' };
 };
 
 /**
- * Remove bookmark from a signal
+ * Remove bookmark
  */
 const unbookmark_signal = async (accountId: string, signalId: string) => {
   if (!Types.ObjectId.isValid(signalId)) {
@@ -461,12 +466,11 @@ const unbookmark_signal = async (accountId: string, signalId: string) => {
   }
 
   await Signal_Model.findByIdAndUpdate(signalId, { $inc: { bookmarkCount: -1 } });
-
   return { message: 'Bookmark removed successfully' };
 };
 
 /**
- * Share a signal (tracks share action)
+ * Share a signal
  */
 const share_signal = async (accountId: string, signalId: string) => {
   if (!Types.ObjectId.isValid(signalId)) {
@@ -478,66 +482,58 @@ const share_signal = async (accountId: string, signalId: string) => {
     throw new AppError('Signal not found', httpStatus.NOT_FOUND);
   }
 
-  // Track contribution for sharing
   contribution_services.track_contribution(accountId, 'share_signal', signalId);
-
   return { message: 'Signal shared successfully' };
 };
 
-/**
- * Publish scheduled signals whose scheduled time has arrived
- * Called by cron job to automatically transition scheduled signals to active
- */
 const publish_scheduled_signals = async () => {
   const now = new Date();
-
-  // Find all scheduled signals whose scheduledAt time has passed
-  const signalsToPublish = await Signal_Model.find({
+  
+  const signals = await Signal_Model.find({
     status: 'scheduled',
+    publishType: 'scheduled',
     scheduledAt: { $lte: now },
   });
 
-  if (signalsToPublish.length === 0) {
-    return { published: 0, errors: 0, notified: 0 };
+  if (signals.length === 0) {
+    return { total: 0, published: 0, notified: 0, errors: 0 };
   }
 
-  let publishedCount = 0;
-  let errorCount = 0;
+  let published = 0;
+  let notified = 0;
+  let errors = 0;
 
-  for (const signal of signalsToPublish) {
+  for (const signal of signals) {
     try {
-      // Update signal status to active and set publishedAt
       await Signal_Model.findByIdAndUpdate(signal._id, {
         status: 'active',
         publishedAt: now,
       });
 
-      // Update master stats (increment totalSignals)
       await Master_Model.findOneAndUpdate(
         { accountId: signal.authorId },
         { $inc: { totalSignals: 1 } }
       );
 
-      // Track contribution for scheduled signal publish
-      contribution_services.track_contribution(signal.authorId.toString(), 'create_signal', signal._id.toString());
+      await contribution_services.track_contribution(
+        signal.authorId.toString(),
+        'create_signal',
+        signal._id.toString()
+      );
 
-      // Notify followers about the new signal (reuses the same helper)
       await notifyFollowersOfNewSignal(signal._id.toString(), signal.authorId.toString());
-
-      publishedCount++;
+      
+      published++;
+      notified++;
     } catch (error: any) {
-      errorCount++;
-      // Log error but continue processing other signals
-      console.error(`Failed to publish signal ${signal._id}: ${error.message}`);
+      logger.error(`Failed to publish scheduled signal ${signal._id}: ${error.message}`);
+      errors++;
     }
   }
 
-  return { published: publishedCount, errors: errorCount, total: signalsToPublish.length };
+  return { total: signals.length, published, notified, errors };
 };
 
-/**
- * Admin feature a signal
- */
 const toggle_featured_signal = async (signalId: string, isFeatured: boolean) => {
   if (!Types.ObjectId.isValid(signalId)) {
     throw new AppError('Invalid signal ID', httpStatus.BAD_REQUEST);
@@ -547,7 +543,7 @@ const toggle_featured_signal = async (signalId: string, isFeatured: boolean) => 
     signalId,
     { isFeatured },
     { new: true }
-  ).populate('authorId', 'name email');
+  );
 
   if (!signal) {
     throw new AppError('Signal not found', httpStatus.NOT_FOUND);
@@ -563,12 +559,12 @@ export const signal_services = {
   get_signals,
   get_signal_by_id,
   get_my_signals,
+  publish_scheduled_signals,
+  toggle_featured_signal,
   increment_view,
   like_signal,
   unlike_signal,
   bookmark_signal,
   unbookmark_signal,
   share_signal,
-  publish_scheduled_signals,
-  toggle_featured_signal,
 };

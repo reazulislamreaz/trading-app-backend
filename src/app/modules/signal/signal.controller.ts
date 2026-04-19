@@ -77,9 +77,9 @@ const get_my_signals = catchAsync(async (req, res) => {
   const accountId = req.user!.userId;
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 20;
-  const status = req.query.status as string | undefined;
+  const { status, assetType, signalType, isPremium, search } = req.query;
 
-  const result = await signal_services.get_my_signals(accountId, page, limit, status);
+  const result = await signal_services.get_my_signals(accountId, page, limit, { status: status as string, assetType: assetType as string, signalType: signalType as string, isPremium: isPremium === "true", search: search as string });
 
   manageResponse(res, {
     success: true,
