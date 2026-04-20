@@ -158,6 +158,47 @@ export const masterSwaggerDocs = {
     },
   },
 
+  "/api/v1/masters/analytics": {
+    get: {
+      tags: ["Masters"],
+      summary: "Get my master analytics",
+      description: "Get detailed performance analytics including monthly PnL charts, asset distribution, and follower growth.",
+      security: [{ bearerAuth: [] }],
+      responses: {
+        200: {
+          description: "Master detailed analytics retrieved",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  success: { type: "boolean", example: true },
+                  data: {
+                    type: "object",
+                    properties: {
+                      overview: { type: "object" },
+                      performance: {
+                        type: "object",
+                        properties: {
+                          monthly: { type: "array", items: { type: "object" } },
+                          assetDistribution: { type: "array", items: { type: "object" } },
+                          topSymbols: { type: "array", items: { type: "object" } },
+                        },
+                      },
+                      followerGrowth: { type: "array", items: { type: "object" } },
+                      recentSignals: { type: "array", items: { type: "object" } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        404: { description: "Master profile not found" },
+      },
+    },
+  },
+
   "/api/v1/masters/featured/{id}": {
     patch: {
       tags: ["Masters (Admin)"],

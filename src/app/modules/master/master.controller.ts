@@ -88,6 +88,18 @@ const get_my_stats = catchAsync(async (req, res) => {
   });
 });
 
+const get_my_analytics = catchAsync(async (req, res) => {
+  const accountId = req.user!.userId;
+  const result = await master_services.get_master_analytics(accountId);
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Master detailed analytics retrieved',
+    data: result,
+  });
+});
+
 export const master_controllers = {
   create_or_update_profile,
   get_my_profile,
@@ -95,4 +107,5 @@ export const master_controllers = {
   get_single_master,
   toggle_featured,
   get_my_stats,
+  get_my_analytics,
 };

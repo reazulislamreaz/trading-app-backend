@@ -253,6 +253,108 @@ const get_master_stats = async (accountId: string) => {
   };
 };
 
+/**
+ * Get detailed master analytics for dashboard
+ */
+const get_master_analytics = async (accountId: string) => {
+  const authorId = new Types.ObjectId(accountId);
+  const master = await Master_Model.findOne({ accountId: authorId });
+
+  if (!master) {
+    throw new AppError('Master profile not found', httpStatus.NOT_FOUND);
+  }
+
+  // 1. Basic Stats (Reuse existing logic)
+  const basicStats = await get_master_stats(accountId);
+
+  // 2. Performance over time (Monthly)
+  const monthlyPerformance = await Signal_Model.aggregate([
+    { $match: { authorId, status: { $in: ['closed', 'completed', 'won', 'lost'] } } },
+    {
+      $group: {
+        _id: {
+          year: { $year: '$createdAt' },
+          month: { $month: '$createdAt' },
+        },
+        totalPnL: { $sum: '$resultPnl' },
+        signalCount: { $sum: 1 },
+        wins: { $sum: { $cond: [{ $gt: ['$resultPnl', 0] }, 1, 0] } },
+      },
+    },
+    { $sort: { '_id.year': 1, '_id.month': 1 } },
+  ]);
+
+  // 3. Asset Distribution
+  const assetDistribution = await Signal_Model.aggregate([
+    { $match: { authorId } },
+    {
+      $group: {
+        _id: '$assetType',
+        count: { $sum: 1 },
+      },
+    },
+    { $project: { assetType: '$_id', count: 1, _id: 0 } },
+    { $sort: { count: -1 } },
+  ]);
+
+  // 4. Top Symbols
+  const topSymbols = await Signal_Model.aggregate([
+    { $match: { authorId } },
+    {
+      $group: {
+        _id: '$symbol',
+        count: { $sum: 1 },
+      },
+    },
+    { $project: { symbol: '$_id', count: 1, _id: 0 } },
+    { $sort: { count: -1 } },
+    { $limit: 5 },
+  ]);
+
+  // 5. Follower Growth (Last 30 days)
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const followerGrowth = await Follow_Model.aggregate([
+    { 
+      $match: { 
+        masterId: authorId,
+        createdAt: { $gte: thirtyDaysAgo }
+      } 
+    },
+    {
+      $group: {
+        _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: 1 } },
+    { $project: { date: '$_id', count: 1, _id: 0 } },
+  ]);
+
+  // 6. Recent Signal Results
+  const recentSignals = await Signal_Model.find({ authorId })
+    .sort({ createdAt: -1 })
+    .limit(5)
+    .select('symbol assetType signalType resultPnl status createdAt');
+
+  return {
+    overview: basicStats,
+    performance: {
+      monthly: monthlyPerformance.map((m) => ({
+        month: `${m._id.year}-${String(m._id.month).padStart(2, '0')}`,
+        pnl: Math.round(m.totalPnL * 100) / 100,
+        signals: m.signalCount,
+        winRate: Math.round((m.wins / m.signalCount) * 10000) / 100,
+      })),
+      assetDistribution,
+      topSymbols,
+    },
+    followerGrowth,
+    recentSignals,
+  };
+};
+
 export const master_services = {
   create_or_update_master_profile,
   get_master_profile,
@@ -260,4 +362,5 @@ export const master_services = {
   get_master_by_id,
   toggle_featured,
   get_master_stats,
+  get_master_analytics,
 };

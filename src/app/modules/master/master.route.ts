@@ -12,6 +12,7 @@ masterRouter.get('/', master_controllers.get_all_masters);
 // Master-only routes (defined before parameterized :id to avoid conflicts)
 masterRouter.get('/profile/me', auth('MASTER'), master_controllers.get_my_profile);
 masterRouter.get('/stats', auth('MASTER'), master_controllers.get_my_stats);
+masterRouter.get('/analytics', auth('MASTER'), master_controllers.get_my_analytics);
 masterRouter.patch(
   '/profile',
   auth('MASTER'),
