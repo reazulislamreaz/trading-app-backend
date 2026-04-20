@@ -15,9 +15,10 @@ export const signalBaseFields = z.object({
   takeProfit2: z.coerce.number().positive().nullable().optional(),
   takeProfit3: z.coerce.number().positive().nullable().optional(),
   tags: z.array(z.string()).max(10).optional(),
-  externalChartUrl: z.string().url().optional().or(z.literal('')),
+  externalChartUrl: z.string().url().nullable().optional().or(z.literal('')),
   publishType: z.enum(['instant', 'scheduled']).default('instant'),
   scheduledAt: z.string().datetime().optional(),
+  status: z.enum(['draft', 'scheduled', 'active', 'closed', 'expired', 'canceled', 'published', 'completed', 'cancelled', 'won', 'lost']).optional(),
 });
 
 // Create schema with validation for scheduled publish

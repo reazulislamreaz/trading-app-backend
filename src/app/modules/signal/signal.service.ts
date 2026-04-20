@@ -186,6 +186,12 @@ const update_signal = async (
   } else if (finalStatus === ('lost' as any)) {
     finalStatus = 'closed';
     if (finalResultPnl === undefined || finalResultPnl === null) finalResultPnl = -1;
+  } else if (finalStatus === ('published' as any)) {
+    finalStatus = 'active';
+  } else if (finalStatus === ('completed' as any)) {
+    finalStatus = 'closed';
+  } else if (finalStatus === ('cancelled' as any)) {
+    finalStatus = 'canceled';
   }
 
   // Detect close action: status set to 'closed' with resultPnl provided
@@ -292,6 +298,12 @@ const apply_filters = (query: any, filters: TSignalFilters) => {
     } else if (filters.status === 'lost') {
       query.status = 'closed';
       query.resultPnl = { $lt: 0 };
+    } else if (filters.status === 'published') {
+      query.status = 'active';
+    } else if (filters.status === 'completed') {
+      query.status = 'closed';
+    } else if (filters.status === 'cancelled') {
+      query.status = 'canceled';
     } else {
       query.status = filters.status;
     }
