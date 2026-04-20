@@ -262,6 +262,7 @@ export const signalSwaggerDocs = {
       tags: ["Signals"],
       summary: "Bookmark a signal",
       description: "Bookmark a signal for later reference (increments bookmarkCount and tracks contribution).",
+      deprecated: true,
       security: [{ bearerAuth: [] }],
       parameters: [
         { name: "id", in: "path", required: true, schema: { type: "string" } },
@@ -275,6 +276,7 @@ export const signalSwaggerDocs = {
       tags: ["Signals"],
       summary: "Remove bookmark",
       description: "Remove bookmark from a signal (decrements bookmarkCount).",
+      deprecated: true,
       security: [{ bearerAuth: [] }],
       parameters: [
         { name: "id", in: "path", required: true, schema: { type: "string" } },
