@@ -182,26 +182,37 @@ const get_trade_history = async (
 
   const total = await Copied_Trade_Model.countDocuments(query);
 
-  // Compute summary stats
-  const allUserTrades = await Copied_Trade_Model.find({ userId: new Types.ObjectId(userId) });
-  const completedTrades = allUserTrades.filter((t) => t.status === 'completed');
-  const wins = completedTrades.filter((t) => t.outcome === 'win').length;
-  const losses = completedTrades.filter((t) => t.outcome === 'loss').length;
-  const breakevens = completedTrades.filter((t) => t.outcome === 'breakeven').length;
-  const totalPnl = completedTrades.reduce((sum, t) => sum + (t.resultPnl || 0), 0);
-  const winRate = completedTrades.length > 0 ? (wins / completedTrades.length) * 100 : 0;
+    // Compute summary stats using aggregation (Fixes H8)
+  const stats = await Copied_Trade_Model.aggregate([
+    { $match: { userId: new Types.ObjectId(userId) } },
+    {
+      $group: {
+        _id: null,
+        totalTrades: { $sum: 1 },
+        completedTrades: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } },
+        pendingTrades: { $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } },
+        wins: { $sum: { $cond: [{ $eq: ["$outcome", "win"] }, 1, 0] } },
+        losses: { $sum: { $cond: [{ $eq: ["$outcome", "loss"] }, 1, 0] } },
+        breakevens: { $sum: { $cond: [{ $eq: ["$outcome", "breakeven"] }, 1, 0] } },
+        totalPnl: { $sum: "$resultPnl" }
+      }
+    }
+  ]);
+
+  const s = stats.length > 0 ? stats[0] : { totalTrades: 0, completedTrades: 0, pendingTrades: 0, wins: 0, losses: 0, breakevens: 0, totalPnl: 0 };
+  const winRate = s.completedTrades > 0 ? (s.wins / s.completedTrades) * 100 : 0;
 
   return {
     data: trades,
     summary: {
-      totalTrades: allUserTrades.length,
-      completedTrades: completedTrades.length,
-      pendingTrades: allUserTrades.filter((t) => t.status === 'pending').length,
-      wins,
-      losses,
-      breakevens,
+      totalTrades: s.totalTrades,
+      completedTrades: s.completedTrades,
+      pendingTrades: s.pendingTrades,
+      wins: s.wins,
+      losses: s.losses,
+      breakevens: s.breakevens,
       winRate: Math.round(winRate * 100) / 100,
-      totalPnl: Math.round(totalPnl * 100) / 100,
+      totalPnl: Math.round(s.totalPnl * 100) / 100,
     },
     meta: {
       page,
@@ -253,10 +264,11 @@ const delete_trade = async (userId: string, tradeId: string) => {
 
   await Copied_Trade_Model.findByIdAndDelete(tradeId);
 
-  // Decrement signal copier count
-  await Signal_Model.findByIdAndUpdate(trade.signalId, {
-    $inc: { copierCount: -1 },
-  });
+  // Decrement signal copier count (Fixes H10: Ensure no negative count)
+  await Signal_Model.findOneAndUpdate(
+    { _id: trade.signalId, copierCount: { $gt: 0 } },
+    { $inc: { copierCount: -1 } }
+  );
 
   return { message: 'Trade deleted' };
 };
@@ -403,10 +415,11 @@ const cancel_copy = async (userId: string, tradeId: string) => {
 
   await Copied_Trade_Model.findByIdAndDelete(tradeId);
 
-  // Decrement signal copier count
-  await Signal_Model.findByIdAndUpdate(trade.signalId, {
-    $inc: { copierCount: -1 },
-  });
+  // Decrement signal copier count (Fixes H10: Ensure no negative count)
+  await Signal_Model.findOneAndUpdate(
+    { _id: trade.signalId, copierCount: { $gt: 0 } },
+    { $inc: { copierCount: -1 } }
+  );
 
   return { message: 'Copy canceled' };
 };

@@ -1,6 +1,8 @@
 import { AppError } from '../../utils/app_error';
 import httpStatus from 'http-status';
 import { Master_Model } from './master.schema';
+import { Signal_Model } from '../signal/signal.schema';
+import { Follow_Model } from '../follow/follow.schema';
 import { Account_Model } from '../auth/auth.schema';
 import { TMasterProfile } from './master.interface';
 import { Types } from 'mongoose';
@@ -154,20 +156,100 @@ const toggle_featured = async (masterId: string, isFeatured: boolean) => {
  * Get master statistics
  */
 const get_master_stats = async (accountId: string) => {
-// test
   const master = await Master_Model.findOne({ accountId: new Types.ObjectId(accountId) });
 
   if (!master) {
     throw new AppError('Master profile not found', httpStatus.NOT_FOUND);
   }
 
+  const authorId = new Types.ObjectId(accountId);
+
+  // Fetch real data from Signal_Model to ensure accuracy
+  const totalSignals = await Signal_Model.countDocuments({ authorId });
+  
+  const activeSignals = await Signal_Model.countDocuments({ 
+    authorId,
+    status: { $in: ['active', 'published'] }
+  });
+
+  const completedSignals = await Signal_Model.countDocuments({ 
+    authorId,
+    status: { $in: ['closed', 'completed', 'won', 'lost'] }
+  });
+
+  const winningSignals = await Signal_Model.countDocuments({
+    authorId,
+    status: { $in: ['closed', 'completed', 'won', 'lost'] },
+    resultPnl: { $gt: 0 }
+  });
+
+  const losingSignals = await Signal_Model.countDocuments({
+    authorId,
+    status: { $in: ['closed', 'completed', 'won', 'lost'] },
+    resultPnl: { $lt: 0 }
+  });
+
+  // Calculate win rate
+  const totalClosed = winningSignals + losingSignals;
+  const winRate = totalClosed > 0 ? (winningSignals / totalClosed) * 100 : 0;
+
+  // Aggregate for engagement and profit
+  const aggregationResult = await Signal_Model.aggregate([
+    { 
+      $match: { authorId } 
+    },
+    { 
+      $group: { 
+        _id: null, 
+        avgProfit: { 
+          $avg: { 
+            $cond: [
+              { $in: ['$status', ['closed', 'completed', 'won', 'lost']] },
+              '$resultPnl',
+              null
+            ] 
+          } 
+        },
+        totalLikes: { $sum: '$likeCount' },
+        totalBookmarks: { $sum: '$bookmarkCount' }
+      } 
+    }
+  ]);
+
+  const stats = aggregationResult.length > 0 ? aggregationResult[0] : {
+    avgProfit: 0,
+    totalLikes: 0,
+    totalBookmarks: 0
+  };
+
+  // Accurate follower count from Follow_Model
+  const totalFollowers = await Follow_Model.countDocuments({ masterId: authorId });
+
+  // Update master record with fresh stats to keep it synchronized
+  await Master_Model.findOneAndUpdate(
+    { accountId: authorId },
+    { 
+      totalSignals, 
+      winningSignals, 
+      losingSignals, 
+      winRate: Math.round(winRate * 100) / 100,
+      avgPnl: Math.round((stats.avgProfit || 0) * 100) / 100,
+      followerCount: totalFollowers
+    }
+  );
+
   return {
-    totalSignals: master.totalSignals,
-    winningSignals: master.winningSignals,
-    losingSignals: master.losingSignals,
-    winRate: master.winRate,
-    avgPnl: master.avgPnl,
-    followerCount: master.followerCount,
+    totalSignals,
+    activeSignals,
+    completedSignals,
+    winningSignals,
+    losingSignals,
+    winRate: Math.round(winRate * 100) / 100,
+    avgProfit: Math.round((stats.avgProfit || 0) * 100) / 100,
+    totalFollowers,
+    followerCount: totalFollowers,
+    totalLikes: stats.totalLikes || 0,
+    totalBookmarks: stats.totalBookmarks || 0,
   };
 };
 
