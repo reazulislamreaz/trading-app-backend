@@ -27,3 +27,4 @@ masterRouter.get('/:id', master_controllers.get_single_master);
 masterRouter.patch('/featured/:id', auth('ADMIN'), master_controllers.toggle_featured);
 
 export default masterRouter;
+masterRouter.delete('/:id', auth('ADMIN'), master_controllers.delete_master);

@@ -100,6 +100,19 @@ const get_my_analytics = catchAsync(async (req, res) => {
   });
 });
 
+
+const delete_master = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const result = await master_services.delete_master(id);
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: result.message,
+    data: null,
+  });
+});
+
 export const master_controllers = {
   create_or_update_profile,
   get_my_profile,
@@ -108,4 +121,5 @@ export const master_controllers = {
   toggle_featured,
   get_my_stats,
   get_my_analytics,
+  delete_master,
 };

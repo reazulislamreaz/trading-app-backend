@@ -1,11 +1,15 @@
-import { AppError } from '../../utils/app_error';
+import mongoose from "mongoose";
+import { Types } from 'mongoose';
 import httpStatus from 'http-status';
+import { AppError } from '../../utils/app_error';
 import { Master_Model } from './master.schema';
 import { Signal_Model } from '../signal/signal.schema';
 import { Follow_Model } from '../follow/follow.schema';
 import { Account_Model } from '../auth/auth.schema';
+import { Copied_Trade_Model } from '../copied_trade/copied_trade.schema';
+import { Notification_Model } from '../notification/notification.schema';
+import { Contribution_Model } from '../contribution/contribution.schema';
 import { TMasterProfile } from './master.interface';
-import { Types } from 'mongoose';
 
 /**
  * Create or update master profile for the authenticated user
@@ -23,7 +27,6 @@ const create_or_update_master_profile = async (
   if (account.role !== 'MASTER') {
     throw new AppError('Only MASTER role users can create master profiles', httpStatus.FORBIDDEN);
   }
-
 
   const master = await Master_Model.findOneAndUpdate(
     { accountId },
@@ -355,6 +358,66 @@ const get_master_analytics = async (accountId: string) => {
   };
 };
 
+/**
+ * Admin deletes a master trader and all associated data
+ * Cascades to signals, follows, copied trades, and more
+ */
+const delete_master = async (masterId: string) => {
+  if (!Types.ObjectId.isValid(masterId)) {
+    throw new AppError('Invalid master ID', httpStatus.BAD_REQUEST);
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const master = await Master_Model.findById(masterId).session(session);
+    if (!master) {
+      throw new AppError('Master profile not found', httpStatus.NOT_FOUND);
+    }
+
+    const accountId = master.accountId;
+
+    // 1. Delete all signals authored by this master
+    await Signal_Model.deleteMany({ authorId: accountId }).session(session);
+
+    // 2. Delete all follows related to this master (both ways)
+    await Follow_Model.deleteMany({ 
+      $or: [
+        { masterId: accountId }, 
+        { followerId: accountId }
+      ] 
+    }).session(session);
+
+    // 3. Delete copied trades records linked to this master
+    await Copied_Trade_Model.deleteMany({ masterId: accountId }).session(session);
+
+    // 4. Delete notifications for this account
+    await Notification_Model.deleteMany({ accountId }).session(session);
+
+    // 5. Delete contribution/points history
+    await Contribution_Model.deleteMany({ accountId }).session(session);
+
+    // 6. Delete master profile
+    await Master_Model.findByIdAndDelete(masterId).session(session);
+
+    // 7. Hard delete the account itself
+    await Account_Model.findByIdAndDelete(accountId).session(session);
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return { 
+      success: true, 
+      message: 'Master and all associated data (signals, follows, etc.) have been permanently deleted' 
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+};
+
 export const master_services = {
   create_or_update_master_profile,
   get_master_profile,
@@ -363,4 +426,5 @@ export const master_services = {
   toggle_featured,
   get_master_stats,
   get_master_analytics,
+  delete_master,
 };
