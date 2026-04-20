@@ -30,7 +30,6 @@ export interface ISignal {
   publishType: PublishType;
   scheduledAt: Date | null;
   publishedAt: Date | null;
-  isPremium: boolean;
   isFeatured: boolean;
 
   // Performance tracking
@@ -91,7 +90,6 @@ const signalSchema = new Schema<ISignal>(
     },
     scheduledAt: { type: Date, default: null },
     publishedAt: { type: Date, default: null },
-    isPremium: { type: Boolean, default: false },
     isFeatured: { type: Boolean, default: false },
 
     // Performance tracking

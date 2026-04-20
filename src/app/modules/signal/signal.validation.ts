@@ -14,7 +14,6 @@ export const signalBaseFields = z.object({
   takeProfit1: z.coerce.number().positive().nullable().optional(),
   takeProfit2: z.coerce.number().positive().nullable().optional(),
   takeProfit3: z.coerce.number().positive().nullable().optional(),
-  isPremium: z.coerce.boolean().optional(),
   tags: z.array(z.string()).max(10).optional(),
   externalChartUrl: z.string().url().optional().or(z.literal('')),
   publishType: z.enum(['instant', 'scheduled']).default('instant'),
