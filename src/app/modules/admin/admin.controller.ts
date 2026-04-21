@@ -8,6 +8,7 @@ import { Signal_Model } from '../signal/signal.schema';
 import { Master_Model } from '../master/master.schema';
 import { Follow_Model } from '../follow/follow.schema';
 import { Notification_Model } from '../notification/notification.schema';
+import { Referral_Model } from '../referral/referral.schema';
 import { notification_services } from '../notification/notification.service';
 
 // Platform analytics (Admin only)
@@ -18,6 +19,13 @@ const get_platform_analytics = catchAsync(async (req, res) => {
   const totalSignals = await Signal_Model.countDocuments();
   const activeSignals = await Signal_Model.countDocuments({ status: 'active' });
   const totalFollows = await Follow_Model.countDocuments();
+
+  // Referral stats for analytics
+  const totalReferrals = await Referral_Model.countDocuments();
+  const activeReferrals = await Referral_Model.countDocuments({ status: 'COMPLETED' });
+  const totalRewards = await Referral_Model.aggregate([
+    { $group: { _id: null, total: { $sum: '$rewardAmount' } } },
+  ]);
 
   // Revenue stats
   const totalRevenue = await Payment_Model.aggregate([
@@ -56,12 +64,120 @@ const get_platform_analytics = catchAsync(async (req, res) => {
         active: activeSignals,
       },
       follows: { total: totalFollows },
+      referrals: {
+        total: totalReferrals,
+        active: activeReferrals,
+        totalRewards: totalRewards[0]?.total || 0,
+      },
       revenue: {
         total: totalRevenue[0]?.total || 0,
         transactionCount: totalRevenue[0]?.count || 0,
       },
       recentSubscriptions,
     },
+  });
+});
+
+// Global Referral Stats (Admin)
+const get_referral_stats = catchAsync(async (req, res) => {
+  const totalReferrals = await Referral_Model.countDocuments();
+  const activeReferrals = await Referral_Model.countDocuments({ status: 'COMPLETED' });
+  
+  const totalRewardsDistributed = await Referral_Model.aggregate([
+    { $group: { _id: null, total: { $sum: '$rewardAmount' } } },
+  ]);
+
+  // Get Top Referrers
+  const topReferrers = await Referral_Model.aggregate([
+    { $match: { status: 'COMPLETED' } },
+    { $group: { 
+        _id: '$referrerId', 
+        count: { $sum: 1 },
+        rewards: { $sum: '$rewardAmount' }
+      } 
+    },
+    { $sort: { count: -1 } },
+    { $limit: 10 },
+    {
+      $lookup: {
+        from: 'accounts',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'referrer'
+      }
+    },
+    { $unwind: '$referrer' },
+    {
+      $project: {
+        name: '$referrer.name',
+        count: 1,
+        rewards: 1
+      }
+    }
+  ]);
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Global referral stats retrieved',
+    data: {
+      totalReferrals,
+      activeReferrals,
+      totalRewardsDistributed: totalRewardsDistributed[0]?.total || 0,
+      topReferrers
+    },
+  });
+});
+
+// Get all referrals (Admin)
+const get_all_referrals = catchAsync(async (req, res) => {
+  const page = Number(req.query.page) || 1;
+  const limit = Math.min(Number(req.query.limit) || 20, 100);
+  const skip = (page - 1) * limit;
+
+  const query: Record<string, unknown> = {};
+  if (req.query.status) {
+    query.status = req.query.status;
+  }
+
+  // Handle search (referrer or invitee name)
+  if (req.query.search) {
+    const searchRegex = new RegExp(req.query.search as string, 'i');
+    const matchedUsers = await Account_Model.find({ 
+      name: { $regex: searchRegex } 
+    }).select('_id');
+    const userIds = matchedUsers.map(u => u._id);
+    
+    query.$or = [
+      { referrerId: { $in: userIds } },
+      { inviteeId: { $in: userIds } }
+    ];
+  }
+
+  const referrals = await Referral_Model.find(query)
+    .populate('referrerId', 'name')
+    .populate('inviteeId', 'name')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+  const total = await Referral_Model.countDocuments(query);
+
+  const data = referrals.map(ref => ({
+    _id: ref._id,
+    referrerName: (ref.referrerId as any)?.name || 'Unknown',
+    inviteeName: (ref.inviteeId as any)?.name || 'Unknown',
+    status: ref.status,
+    rewardAmount: ref.rewardAmount,
+    createdAt: ref.createdAt,
+  }));
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'All referrals retrieved',
+    data,
+    meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
   });
 });
 
@@ -164,9 +280,72 @@ const get_all_payments = catchAsync(async (req, res) => {
   });
 });
 
+
+const get_referral_by_id = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const referral = await Referral_Model.findById(id)
+    .populate('referrerId', 'name email')
+    .populate('inviteeId', 'name email');
+
+  if (!referral) {
+    manageResponse(res, {
+      success: false,
+      statusCode: httpStatus.NOT_FOUND,
+      message: 'Referral not found',
+      data: null,
+    });
+    return;
+  }
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Referral retrieved',
+    data: referral,
+  });
+});
+
+const get_user_referrals = catchAsync(async (req, res) => {
+  const { id } = req.params; // userId
+  const page = Number(req.query.page) || 1;
+  const limit = Math.min(Number(req.query.limit) || 20, 100);
+  const skip = (page - 1) * limit;
+
+  const query = { referrerId: id };
+
+  const referrals = await Referral_Model.find(query)
+    .populate('inviteeId', 'name')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+  const total = await Referral_Model.countDocuments(query);
+
+  const data = referrals.map(ref => ({
+    _id: ref._id,
+    inviteeName: (ref.inviteeId as any)?.name || 'Unknown',
+    status: ref.status,
+    rewardAmount: ref.rewardAmount,
+    createdAt: ref.createdAt,
+  }));
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'User referrals retrieved',
+    data,
+    meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+  });
+});
+
 export const admin_controllers = {
   get_platform_analytics,
   broadcast_announcement,
   change_user_role,
   get_all_payments,
+  get_referral_by_id, 
+  get_user_referrals,
+  get_referral_stats,
+  get_all_referrals,
+
 };
