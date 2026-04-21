@@ -23,24 +23,11 @@ import {
   generateBackupCodes,
 } from "../../utils/2fa";
 import { Referral_Model } from "../referral/referral.schema";
+import { referral_services } from "../referral/referral.service";
 import mongoose from "mongoose";
 
 type RegisterUserReturnType = Document<unknown, {}, TAccount, {}, TAccount> &
   TAccount & { _id: Types.ObjectId } & { __v: number };
-
-/**
- * Generate a unique referral code
- */
-const generateReferralCode = async (): Promise<string> => {
-  let isUnique = false;
-  let code = "";
-  while (!isUnique) {
-    code = crypto.randomBytes(4).toString('hex').toUpperCase(); // 8 character hex string
-    const existing = await Account_Model.findOne({ referralCode: code });
-    if (!existing) isUnique = true;
-  }
-  return code;
-};
 
 type LoginReturnType = {
   accessToken: string;
@@ -122,7 +109,7 @@ const register_user_into_db = async (
     const hashedPassword = await hashPassword(payload.password);
 
     // Generate unique referral code for the new user
-    const referralCode = await generateReferralCode();
+    const referralCode = await referral_services.generateReferralCode();
 
     // Check if referred by someone
     let referredBy: Types.ObjectId | undefined;

@@ -46,10 +46,10 @@ const get_referral_stats_from_db = async (userId: string) => {
 
   // In production, base URL should come from config
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-  const referralLink = `${baseUrl}/login?ref=${account.referralCode}`;
+  const referralLink = `${baseUrl}/login?ref=${account!.referralCode}`;
 
   return {
-    referralCode: account.referralCode,
+    referralCode: account!.referralCode,
     totalReferrals,
     activeReferrals,
     totalRewards,
@@ -112,4 +112,5 @@ export const referral_services = {
   get_referral_stats_from_db,
   get_referral_history_from_db,
   complete_referral_in_db,
+  generateReferralCode,
 };
