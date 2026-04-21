@@ -8,6 +8,7 @@ import { masterSwaggerDocs } from "./app/modules/master/master.swagger";
 import { followSwaggerDocs } from "./app/modules/follow/follow.swagger";
 import { notificationSwaggerDocs } from "./app/modules/notification/notification.swagger";
 import { adminSwaggerDocs } from "./app/modules/admin/admin.swagger";
+import { referralSwaggerDocs } from "./app/modules/referral/referral.swagger";
 import { contributionSwaggerDocs } from "./app/modules/contribution/contribution.swagger";
 import { leaderboardSwaggerDocs } from "./app/modules/leaderboard/leaderboard.swagger";
 import { topTradersSwaggerDocs } from "./app/modules/top-traders/top_traders.swagger";
@@ -31,6 +32,7 @@ export const swaggerOptions = {
       ...followSwaggerDocs,
       ...notificationSwaggerDocs,
       ...adminSwaggerDocs,
+      ...referralSwaggerDocs,
       ...contributionSwaggerDocs,
       ...leaderboardSwaggerDocs,
       ...topTradersSwaggerDocs,
@@ -126,6 +128,61 @@ export const swaggerOptions = {
             meta: { $ref: "#/components/schemas/PaginationMeta" },
           },
         },
+        ReferralStatus: {
+          type: "string",
+          enum: ["PENDING", "COMPLETED", "EXPIRED"],
+          example: "PENDING",
+        },
+        ReferralStats: {
+          type: "object",
+          properties: {
+            referralCode: { type: "string", example: "REF123456" },
+            referralLink: { type: "string", example: "https://tradingapp.com/signup?ref=REF123456" },
+            totalReferrals: { type: "integer", example: 10 },
+            activeReferrals: { type: "integer", example: 5 },
+            totalRewards: { type: "integer", example: 500 },
+          },
+        },
+        ReferralHistoryItem: {
+          type: "object",
+          properties: {
+            _id: { type: "string" },
+            inviteeName: { type: "string" },
+            status: { $ref: "#/components/schemas/ReferralStatus" },
+            rewardAmount: { type: "integer" },
+            createdAt: { type: "string", format: "date-time" },
+          },
+        },
+        AdminReferralItem: {
+          type: "object",
+          properties: {
+            _id: { type: "string" },
+            referrerName: { type: "string" },
+            inviteeName: { type: "string" },
+            status: { $ref: "#/components/schemas/ReferralStatus" },
+            rewardAmount: { type: "integer" },
+            createdAt: { type: "string", format: "date-time" },
+          },
+        },
+        GlobalReferralStats: {
+          type: "object",
+          properties: {
+            totalReferrals: { type: "integer" },
+            activeReferrals: { type: "integer" },
+            totalRewardsDistributed: { type: "integer" },
+            topReferrers: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  count: { type: "integer" },
+                  rewards: { type: "integer" },
+                },
+              },
+            },
+          },
+        },
       },
     },
     tags: [
@@ -139,6 +196,7 @@ export const swaggerOptions = {
       { name: "Masters (Admin)", description: "Admin operations for featuring Master Traders" },
       { name: "Follow", description: "Follow/unfollow Master Traders" },
       { name: "Notifications", description: "User notification management" },
+      { name: "Referrals", description: "User referral system - invite friends and earn rewards" },
       { name: "Contributions", description: "User engagement tracking and top contributor rankings" },
       { name: "Leaderboard", description: "Overall platform leaderboard with composite scoring" },
       { name: "Top Traders", description: "Top Master Traders ranked by trading performance" },

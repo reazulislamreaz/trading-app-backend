@@ -26,6 +26,7 @@ const register_validation = z
     email: z.string({ message: "Email is required" }).email("Invalid email format"),
     password: passwordSchema,
     confirmPassword: z.string({ message: "Confirm password is required" }),
+    referralCode: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",

@@ -4,6 +4,7 @@ import { configs } from '../../configs';
 import { Subscription_Model } from './subscription.schema';
 import { Payment_Model } from './payment.schema';
 import { Account_Model } from '../auth/auth.schema';
+import { referral_services } from '../referral/referral.service';
 import { notification_services } from '../notification/notification.service';
 import logger from '../../configs/logger';
 
@@ -171,6 +172,9 @@ async function handleCheckoutCompleted(session: any) {
       subscriptionTier: planId.split('_')[0],
       subscriptionExpiresAt: new Date(stripeSubscription.current_period_end * 1000),
     });
+
+    // Handle Referral logic
+    await referral_services.complete_referral_in_db(accountId);
 
     // Notify user about successful subscription activation
     const planName = planId.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');

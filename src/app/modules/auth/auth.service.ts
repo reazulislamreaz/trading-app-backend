@@ -22,9 +22,25 @@ import {
   verifyTOTP,
   generateBackupCodes,
 } from "../../utils/2fa";
+import { Referral_Model } from "../referral/referral.schema";
+import mongoose from "mongoose";
 
 type RegisterUserReturnType = Document<unknown, {}, TAccount, {}, TAccount> &
   TAccount & { _id: Types.ObjectId } & { __v: number };
+
+/**
+ * Generate a unique referral code
+ */
+const generateReferralCode = async (): Promise<string> => {
+  let isUnique = false;
+  let code = "";
+  while (!isUnique) {
+    code = crypto.randomBytes(4).toString('hex').toUpperCase(); // 8 character hex string
+    const existing = await Account_Model.findOne({ referralCode: code });
+    if (!existing) isUnique = true;
+  }
+  return code;
+};
 
 type LoginReturnType = {
   accessToken: string;
@@ -91,9 +107,12 @@ const resetLoginAttempts = async (email: string): Promise<void> => {
 const register_user_into_db = async (
   payload: TRegisterPayload,
 ): Promise<RegisterUserReturnType[]> => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     // Check if account already exists
-    const existingAccount = await Account_Model.findOne({ email: payload.email });
+    const existingAccount = await Account_Model.findOne({ email: payload.email }).session(session);
 
     if (existingAccount) {
       throw new AppError(AUTH_ERRORS.ACCOUNT_EXISTS, httpStatus.BAD_REQUEST);
@@ -102,14 +121,38 @@ const register_user_into_db = async (
     // Hash password
     const hashedPassword = await hashPassword(payload.password);
 
-    // Create account with name, email, and hashed password
+    // Generate unique referral code for the new user
+    const referralCode = await generateReferralCode();
+
+    // Check if referred by someone
+    let referredBy: Types.ObjectId | undefined;
+    if (payload.referralCode) {
+      const referrer = await Account_Model.findOne({ referralCode: payload.referralCode }).session(session);
+      if (referrer) {
+        referredBy = referrer._id;
+      }
+    }
+
+    // Create account with name, email, hashed password, and referral info
     const accountPayload: Partial<TAccount> = {
       name: payload.name,
       email: payload.email,
       password: hashedPassword,
+      referralCode,
+      referredBy: referredBy as any,
     };
 
-    const newAccount = await Account_Model.create([accountPayload]);
+    const newAccount = await Account_Model.create([accountPayload], { session });
+
+    // If referred by someone, create a referral record
+    if (referredBy) {
+      await Referral_Model.create([{
+        referrerId: referredBy,
+        inviteeId: newAccount[0]._id,
+        status: 'PENDING',
+        rewardAmount: 0, // Rewards might be calculated later upon subscription/completion
+      }], { session });
+    }
 
     // Generate verification code
     const verificationCode = generateOTP();
@@ -117,8 +160,12 @@ const register_user_into_db = async (
 
     await Account_Model.findByIdAndUpdate(
       newAccount[0]._id,
-      { verificationCode, verificationCodeExpires }
+      { verificationCode, verificationCodeExpires },
+      { session }
     );
+
+    await session.commitTransaction();
+    session.endSession();
 
     // Send verification email (non-blocking)
     sendMail({
@@ -137,6 +184,8 @@ const register_user_into_db = async (
     return newAccount;
 
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     throw error;
   }
 };

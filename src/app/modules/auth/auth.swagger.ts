@@ -24,6 +24,11 @@ export const authSwaggerDocs = {
                   example: "SecurePass123!",
                   description: "Must match password"
                 },
+                referralCode: {
+                  type: "string",
+                  example: "REF123456",
+                  description: "Optional: Referral code from a friend"
+                },
               },
             },
           },

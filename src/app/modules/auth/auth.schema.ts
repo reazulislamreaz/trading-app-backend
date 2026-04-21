@@ -35,7 +35,9 @@ const authSchema = new Schema<TAccount>({
     // Security
     lastPasswordChange: { type: Date, default: Date.now },
     loginAttempts: { type: Number, default: 0 },
-    lockedUntil: { type: Date, select: false }
+    lockedUntil: { type: Date, select: false },
+    referralCode: { type: String, unique: true },
+    referredBy: { type: Schema.Types.ObjectId, ref: "account" }
 }, {
     versionKey: false,
     timestamps: true
@@ -49,6 +51,7 @@ authSchema.index({ email: 1 }, { unique: true });
 authSchema.index({ accountStatus: 1 });
 authSchema.index({ role: 1 });
 authSchema.index({ twoFactorEnabled: 1 });
+authSchema.index({ referralCode: 1 }, { unique: true });
 
 // Compound indexes for common queries
 authSchema.index({ email: 1, isDeleted: 1 });

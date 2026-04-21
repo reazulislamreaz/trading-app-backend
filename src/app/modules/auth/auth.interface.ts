@@ -32,12 +32,15 @@ export type TAccount = {
   lastPasswordChange?: Date;
   loginAttempts?: number;
   lockedUntil?: Date;
+  referralCode?: string;
+  referredBy?: string;
 };
 
 export interface TRegisterPayload {
   name: string;
   email: string;
   password: string;
+  referralCode?: string;
   confirmPassword: string;
 }
 

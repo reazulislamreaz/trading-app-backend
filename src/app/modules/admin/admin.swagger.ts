@@ -68,6 +68,14 @@ export const adminSwaggerDocs = {
                           transactionCount: { type: "integer", example: 1456 },
                         },
                       },
+                      referrals: {
+                        type: "object",
+                        properties: {
+                          total: { type: "integer", example: 450 },
+                          active: { type: "integer", example: 125 },
+                          totalRewards: { type: "integer", example: 225000, description: "Total rewards distributed in cents" },
+                        },
+                      },
                       recentSubscriptions: {
                         type: "array",
                         items: {
@@ -259,6 +267,70 @@ export const adminSwaggerDocs = {
                       totalPages: { type: "integer" },
                     },
                   },
+                },
+              },
+            },
+          },
+        },
+        403: { description: "Admin access required" },
+      },
+    },
+  },
+
+  "/api/v1/admin/referrals/stats": {
+    get: {
+      tags: ["Admin"],
+      summary: "Get global referral statistics",
+      description: "Admin only. Retrieve global platform-wide stats for the referral campaign.",
+      security: [{ bearerAuth: [] }],
+      responses: {
+        200: {
+          description: "Global referral stats retrieved",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  success: { type: "boolean", example: true },
+                  message: { type: "string", example: "Global referral stats retrieved" },
+                  data: { $ref: "#/components/schemas/GlobalReferralStats" },
+                },
+              },
+            },
+          },
+        },
+        403: { description: "Admin access required" },
+      },
+    },
+  },
+
+  "/api/v1/admin/referrals": {
+    get: {
+      tags: ["Admin"],
+      summary: "Get all referrals",
+      description: "Admin only. Retrieve a paginated list of every referral in the system.",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: "page", in: "query", schema: { type: "integer", default: 1 } },
+        { name: "limit", in: "query", schema: { type: "integer", default: 20 } },
+        { name: "search", in: "query", schema: { type: "string" }, description: "Filter by referrer or invitee name" },
+        { name: "status", in: "query", schema: { type: "string", enum: ["PENDING", "COMPLETED", "EXPIRED"] } },
+      ],
+      responses: {
+        200: {
+          description: "All referrals retrieved",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  success: { type: "boolean", example: true },
+                  message: { type: "string", example: "All referrals retrieved" },
+                  data: {
+                    type: "array",
+                    items: { $ref: "#/components/schemas/AdminReferralItem" },
+                  },
+                  meta: { $ref: "#/components/schemas/PaginationMeta" },
                 },
               },
             },
