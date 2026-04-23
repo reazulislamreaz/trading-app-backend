@@ -34,6 +34,7 @@ export type TAccount = {
   lockedUntil?: Date;
   referralCode?: string;
   referredBy?: string;
+  walletBalance: number;
 };
 
 export interface TRegisterPayload {

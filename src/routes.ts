@@ -13,6 +13,8 @@ import leaderboardRouter from './app/modules/leaderboard/leaderboard.route';
 import topTradersRouter from './app/modules/top-traders/top_traders.route';
 import copiedTradeRouter from './app/modules/copied_trade/copied_trade.route';
 import { referral_routes } from './app/modules/referral/referral.route';
+import { withdrawal_routes } from './app/modules/withdrawal/withdrawal.route';
+import { wallet_transaction_routes } from './app/modules/wallet_transaction/wallet_transaction.route';
 
 const appRouter = Router();
 
@@ -23,6 +25,8 @@ const moduleRoutes = [
     { path: '/upload', route: uploadRoute },
     { path: '/subscription', route: subscriptionRoute },
     { path: '/referrals', route: referral_routes },
+    { path: '/withdrawals', route: withdrawal_routes },
+    { path: '/transactions', route: wallet_transaction_routes },
 
     // Signal platform modules
     { path: '/signals', route: signalRouter },

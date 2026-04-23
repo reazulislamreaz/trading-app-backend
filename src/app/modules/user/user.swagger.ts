@@ -51,6 +51,7 @@ export const userSwaggerDocs = {
                                             },
                                             role: { type: "string", enum: ["USER", "ADMIN", "MASTER"], example: "USER" },
                                             accountStatus: { type: "string", enum: ["ACTIVE", "INACTIVE", "SUSPENDED"], example: "ACTIVE" },
+                                            walletBalance: { type: "integer", example: 1000 },
                                             updatedAt: {
                                                 type: "string",
                                                 example: "2025-10-10T10:00:00Z",

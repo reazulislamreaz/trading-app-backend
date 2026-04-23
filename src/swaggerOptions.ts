@@ -9,6 +9,8 @@ import { followSwaggerDocs } from "./app/modules/follow/follow.swagger";
 import { notificationSwaggerDocs } from "./app/modules/notification/notification.swagger";
 import { adminSwaggerDocs } from "./app/modules/admin/admin.swagger";
 import { referralSwaggerDocs } from "./app/modules/referral/referral.swagger";
+import { withdrawalSwaggerDocs } from "./app/modules/withdrawal/withdrawal.swagger";
+import { walletTransactionSwaggerDocs } from "./app/modules/wallet_transaction/wallet_transaction.swagger";
 import { contributionSwaggerDocs } from "./app/modules/contribution/contribution.swagger";
 import { leaderboardSwaggerDocs } from "./app/modules/leaderboard/leaderboard.swagger";
 import { topTradersSwaggerDocs } from "./app/modules/top-traders/top_traders.swagger";
@@ -33,6 +35,8 @@ export const swaggerOptions = {
       ...notificationSwaggerDocs,
       ...adminSwaggerDocs,
       ...referralSwaggerDocs,
+      ...withdrawalSwaggerDocs,
+      ...walletTransactionSwaggerDocs,
       ...contributionSwaggerDocs,
       ...leaderboardSwaggerDocs,
       ...topTradersSwaggerDocs,
@@ -141,6 +145,49 @@ export const swaggerOptions = {
             totalReferrals: { type: "integer", example: 10 },
             activeReferrals: { type: "integer", example: 5 },
             totalRewards: { type: "integer", example: 500 },
+            walletBalance: { type: "integer", example: 1500 },
+          },
+        },
+        WithdrawalStatus: {
+          type: "string",
+          enum: ["PENDING", "APPROVED", "COMPLETED", "REJECTED"],
+          example: "PENDING",
+        },
+        WithdrawalRequest: {
+          type: "object",
+          properties: {
+            _id: { type: "string" },
+            userId: { type: "string" },
+            amount: { type: "integer" },
+            paymentMethod: { type: "string" },
+            paymentDetails: { type: "string" },
+            status: { $ref: "#/components/schemas/WithdrawalStatus" },
+            adminNote: { type: "string" },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+          },
+        },
+        WalletTransactionType: {
+          type: "string",
+          enum: ["REWARD", "WITHDRAWAL"],
+          example: "REWARD",
+        },
+        WalletTransactionStatus: {
+          type: "string",
+          enum: ["PENDING", "COMPLETED", "FAILED", "REJECTED"],
+          example: "COMPLETED",
+        },
+        WalletTransaction: {
+          type: "object",
+          properties: {
+            _id: { type: "string" },
+            userId: { type: "string" },
+            amount: { type: "integer" },
+            type: { $ref: "#/components/schemas/WalletTransactionType" },
+            status: { $ref: "#/components/schemas/WalletTransactionStatus" },
+            referenceId: { type: "string" },
+            description: { type: "string" },
+            createdAt: { type: "string", format: "date-time" },
           },
         },
         ReferralHistoryItem: {
@@ -197,6 +244,9 @@ export const swaggerOptions = {
       { name: "Follow", description: "Follow/unfollow Master Traders" },
       { name: "Notifications", description: "User notification management" },
       { name: "Referrals", description: "User referral system - invite friends and earn rewards" },
+      { name: "Withdrawals", description: "User withdrawal requests and wallet management" },
+      { name: "Withdrawals (Admin)", description: "Admin operations for processing withdrawal requests" },
+      { name: "Transactions", description: "Wallet transaction history (rewards and withdrawals)" },
       { name: "Contributions", description: "User engagement tracking and top contributor rankings" },
       { name: "Leaderboard", description: "Overall platform leaderboard with composite scoring" },
       { name: "Top Traders", description: "Top Master Traders ranked by trading performance" },

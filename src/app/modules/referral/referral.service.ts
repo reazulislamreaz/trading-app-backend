@@ -1,5 +1,6 @@
 import { Referral_Model } from "./referral.schema";
 import { Account_Model } from "../auth/auth.schema";
+import { WalletTransaction_Model } from "../wallet_transaction/wallet_transaction.schema";
 import { AppError } from "../../utils/app_error";
 import httpStatus from "http-status";
 import { Types } from "mongoose";
@@ -53,6 +54,7 @@ const get_referral_stats_from_db = async (userId: string) => {
     totalReferrals,
     activeReferrals,
     totalRewards,
+    walletBalance: account!.walletBalance,
     referralLink,
   };
 };
@@ -100,6 +102,21 @@ const complete_referral_in_db = async (inviteeId: string) => {
     await Referral_Model.findByIdAndUpdate(referral._id, {
       status: 'COMPLETED',
       rewardAmount: REWARD_AMOUNT,
+    });
+
+    // Update referrer's wallet balance
+    await Account_Model.findByIdAndUpdate(referral.referrerId, {
+      $inc: { walletBalance: REWARD_AMOUNT }
+    });
+
+    // Create wallet transaction
+    await WalletTransaction_Model.create({
+      userId: referral.referrerId,
+      amount: REWARD_AMOUNT,
+      type: "REWARD",
+      status: "COMPLETED",
+      referenceId: referral._id,
+      description: "Referral reward",
     });
 
     return true;
