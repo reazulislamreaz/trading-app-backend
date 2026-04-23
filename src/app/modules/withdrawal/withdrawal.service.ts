@@ -35,7 +35,7 @@ const create_withdrawal_request_in_db = async (userId: string, payload: Partial<
   }
 
   // Minimum withdrawal threshold (e.g., $10 or 1000 cents)
-  const MIN_WITHDRAWAL = 1000; 
+  const MIN_WITHDRAWAL = 100; // 100 cents = $1
   if (amount < MIN_WITHDRAWAL) {
     throw new AppError(`Minimum withdrawal amount is ${MIN_WITHDRAWAL} cents`, httpStatus.BAD_REQUEST);
   }
