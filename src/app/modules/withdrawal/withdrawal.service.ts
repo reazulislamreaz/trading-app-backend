@@ -21,8 +21,21 @@ const create_withdrawal_request_in_db = async (userId: string, payload: Partial<
     throw new AppError("Insufficient wallet balance", httpStatus.BAD_REQUEST);
   }
 
+  // Check for existing pending request
+  const existingPendingRequest = await Withdrawal_Model.findOne({
+    userId,
+    status: "PENDING",
+  });
+
+  if (existingPendingRequest) {
+    throw new AppError(
+      "You already have a pending withdrawal request. Please wait until it is processed.",
+      httpStatus.BAD_REQUEST
+    );
+  }
+
   // Minimum withdrawal threshold (e.g., $10 or 1000 cents)
-  const MIN_WITHDRAWAL = 100; // 1000 cents = $10
+  const MIN_WITHDRAWAL = 1000; 
   if (amount < MIN_WITHDRAWAL) {
     throw new AppError(`Minimum withdrawal amount is ${MIN_WITHDRAWAL} cents`, httpStatus.BAD_REQUEST);
   }
