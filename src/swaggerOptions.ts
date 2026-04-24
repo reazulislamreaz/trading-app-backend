@@ -44,8 +44,8 @@ export const swaggerOptions = {
     },
     servers:
       configs.env === "production"
-        ? [{ url: configs.jwt.front_end_url || "https://your-api.com" }, { url: "https://reaz5000.syedbipul.me" }]
-        : [{ url: "https://reaz5000.syedbipul.me" }, { url: "https://your-api.com" }],
+        ? [{ url: configs.jwt.front_end_url || "http://206.162.244.11:7777" }, { url: "https://reaz5000.syedbipul.me" }]
+        : [{ url: "https://reaz5000.syedbipul.me" }, { url: "http://206.162.244.11:7777" }],
     components: {
       securitySchemes: {
         bearerAuth: {
