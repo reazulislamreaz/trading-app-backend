@@ -4,7 +4,7 @@ import { subscription_validations } from './subscription.validation';
 import auth from '../../middlewares/auth';
 import RequestValidator from '../../middlewares/request_validator';
 import { checkoutLimiter } from '../../middlewares/rate_limiter';
-
+// test
 const subscriptionRouter = Router();
 
 // Get all subscription plans (public)
