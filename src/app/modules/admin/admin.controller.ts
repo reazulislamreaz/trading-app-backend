@@ -4,6 +4,7 @@ import httpStatus from 'http-status';
 import { Account_Model } from '../auth/auth.schema';
 import { Subscription_Model } from '../subscription/subscription.schema';
 import { Payment_Model } from '../subscription/payment.schema';
+import { SubscriptionPlan_Model } from '../subscription/subscription.plans';
 import { Signal_Model } from '../signal/signal.schema';
 import { Master_Model } from '../master/master.schema';
 import { Follow_Model } from '../follow/follow.schema';
@@ -280,6 +281,88 @@ const get_all_payments = catchAsync(async (req, res) => {
   });
 });
 
+// Update Subscription Plan (Admin)
+const update_subscription_plan = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { name, price, durationInDays, features, isActive } = req.body;
+
+  const updateData: Record<string, any> = {};
+  if (name !== undefined) updateData.name = name;
+  if (price !== undefined) updateData.price = price;
+  if (durationInDays !== undefined) updateData.durationInDays = durationInDays;
+  if (features !== undefined) updateData.features = features;
+  if (isActive !== undefined) updateData.isActive = isActive;
+
+  const plan = await SubscriptionPlan_Model.findByIdAndUpdate(id, updateData, {
+    new: true,
+    runValidators: true,
+  });
+
+  if (!plan) {
+    manageResponse(res, {
+      success: false,
+      statusCode: httpStatus.NOT_FOUND,
+      message: 'Subscription plan not found',
+      data: null,
+    });
+    return;
+  }
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Subscription plan updated successfully',
+    data: plan,
+  });
+});
+
+// Get all subscribers (Admin)
+const get_all_subscribers = catchAsync(async (req, res) => {
+  const page = Number(req.query.page) || 1;
+  const limit = Math.min(Number(req.query.limit) || 20, 100);
+  const skip = (page - 1) * limit;
+
+  const query: Record<string, unknown> = {};
+  if (req.query.status) {
+    query.status = req.query.status;
+  }
+
+  const subscribers = await Subscription_Model.find(query)
+    .populate('accountId', 'name email')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+  const total = await Subscription_Model.countDocuments(query);
+
+  // Get plan names for all planIds in the current page
+  const planIds = [...new Set(subscribers.map((s) => s.planId))];
+  const plans = await SubscriptionPlan_Model.find({ planId: { $in: planIds } });
+  
+  const planMap = plans.reduce((acc, plan) => {
+    acc[plan.planId] = plan.name;
+    return acc;
+  }, {} as Record<string, string>);
+
+  const data = subscribers.map((sub: any) => ({
+    userId: sub.accountId?._id,
+    userInfo: sub.accountId,
+    planId: sub.planId,
+    planName: planMap[sub.planId] || sub.planId,
+    startDate: sub.currentPeriodStart,
+    endDate: sub.currentPeriodEnd,
+    status: sub.status,
+  }));
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'All subscribers retrieved',
+    data,
+    meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+  });
+});
+
 
 const get_referral_by_id = catchAsync(async (req, res) => {
   const { id } = req.params;
@@ -343,9 +426,10 @@ export const admin_controllers = {
   broadcast_announcement,
   change_user_role,
   get_all_payments,
+  update_subscription_plan,
+  get_all_subscribers,
   get_referral_by_id, 
   get_user_referrals,
   get_referral_stats,
   get_all_referrals,
-
 };

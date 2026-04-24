@@ -277,6 +277,121 @@ export const adminSwaggerDocs = {
     },
   },
 
+  "/api/v1/admin/plans/{id}": {
+    patch: {
+      tags: ["Admin"],
+      summary: "Update subscription plan",
+      description: "Admin only. Update existing subscription plan details.",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string" },
+          description: "Subscription plan MongoDB _id",
+        },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              properties: {
+                name: { type: "string", example: "Pro Plan Updated" },
+                price: { type: "integer", example: 8900, description: "Price in cents" },
+                durationInDays: { type: "integer", example: 30 },
+                features: { type: "array", items: { type: "string" }, example: ["Feature 1", "Feature 2"] },
+                isActive: { type: "boolean", example: true },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: "Subscription plan updated successfully",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  success: { type: "boolean", example: true },
+                  message: { type: "string", example: "Subscription plan updated successfully" },
+                  data: { type: "object" },
+                },
+              },
+            },
+          },
+        },
+        403: { description: "Admin access required" },
+        404: { description: "Plan not found" },
+      },
+    },
+  },
+
+  "/api/v1/admin/subscribers": {
+    get: {
+      tags: ["Admin"],
+      summary: "Get all subscribers",
+      description: "Admin only. View all users who have active or past subscriptions.",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: "page", in: "query", schema: { type: "integer", default: 1 } },
+        { name: "limit", in: "query", schema: { type: "integer", default: 20 } },
+        { name: "status", in: "query", schema: { type: "string", enum: ["active", "canceled", "past_due", "trialing", "paused"] } },
+      ],
+      responses: {
+        200: {
+          description: "All subscribers retrieved",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  success: { type: "boolean", example: true },
+                  message: { type: "string", example: "All subscribers retrieved" },
+                  data: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        userId: { type: "string" },
+                        userInfo: {
+                          type: "object",
+                          properties: {
+                            name: { type: "string" },
+                            email: { type: "string" },
+                          },
+                        },
+                        planId: { type: "string" },
+                        planName: { type: "string" },
+                        startDate: { type: "string", format: "date-time" },
+                        endDate: { type: "string", format: "date-time" },
+                        status: { type: "string" },
+                      },
+                    },
+                  },
+                  meta: {
+                    type: "object",
+                    properties: {
+                      page: { type: "integer" },
+                      limit: { type: "integer" },
+                      total: { type: "integer" },
+                      totalPages: { type: "integer" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        403: { description: "Admin access required" },
+      },
+    },
+  },
+
   "/api/v1/admin/referrals/stats": {
     get: {
       tags: ["Admin"],

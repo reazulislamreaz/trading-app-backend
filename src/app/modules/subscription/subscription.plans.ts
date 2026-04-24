@@ -14,6 +14,7 @@ export interface ISubscriptionPlan {
   mediaAccess: boolean;
   prioritySupport: boolean;
   isActive: boolean;
+  durationInDays?: number; // Optional: duration of the plan in days
   tier: "free" | "basic" | "pro" | "master";
   syncedToStripe: boolean; // Track if plan is synced with Stripe
 }
@@ -33,6 +34,7 @@ const subscriptionPlanSchema = new Schema<ISubscriptionPlan>(
     mediaAccess: { type: Boolean, default: false },
     prioritySupport: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
+    durationInDays: { type: Number },
     tier: {
       type: String,
       enum: ["free", "basic", "pro", "master"],

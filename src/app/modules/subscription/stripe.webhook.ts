@@ -175,7 +175,6 @@ async function handleCheckoutCompleted(session: any) {
 
     // Handle Referral logic
     await referral_services.complete_referral_in_db(accountId);
-
     // Notify user about successful subscription activation
     const planName = planId.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
     await notification_services.create_notification({
