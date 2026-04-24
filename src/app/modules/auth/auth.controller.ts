@@ -25,7 +25,8 @@ const login_user = catchAsync(async (req: Request, res: Response) => {
   res.cookie("refreshToken", result.refreshToken, {
     secure: configs.env === "production",
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "strict",
+    path: "/",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
   
@@ -67,7 +68,9 @@ const refresh_token = catchAsync(async (req: Request, res: Response) => {
     statusCode: httpStatus.OK,
     success: true,
     message: "Token refreshed successfully",
-    data: result,
+    data: {
+      accessToken: result,
+    },
   });
 });
 
@@ -209,7 +212,8 @@ const use_backup_code = catchAsync(async (req: Request, res: Response) => {
   res.cookie("refreshToken", result.refreshToken, {
     secure: configs.env === "production",
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "strict",
+    path: "/",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
   

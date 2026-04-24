@@ -163,16 +163,10 @@ Authorization: Bearer <access_token>
 
 **POST** `/api/v1/auth/refresh-token`
 
-Get new access token using refresh token.
+Get new access token using refresh token from cookie.
 
-**Request Body (Optional):**
-```json
-{
-  "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
-}
-```
-
-> **Note:** Refresh token is typically sent via HTTP-only cookie.
+**Request Body:**
+None (Refresh token is automatically sent via HTTP-only cookie).
 
 **Response (200 OK):**
 ```json
@@ -180,8 +174,7 @@ Get new access token using refresh token.
   "success": true,
   "message": "Token refreshed successfully",
   "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-    "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
+    "accessToken": "eyJhbGciOiJIUzI1NiIs..."
   }
 }
 ```

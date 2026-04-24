@@ -29,23 +29,35 @@ app.use(helmet()); // Add security headers
 
 // CORS configuration
 const corsOrigins = configs.allowed_origins
-  ? configs.allowed_origins.split(',').filter(Boolean)
-  : [configs.jwt.front_end_url || 'http://localhost:3000'];
+  ? configs.allowed_origins.split(",").filter(Boolean)
+  : [configs.jwt.front_end_url || "http://localhost:3000"];
 
-app.use(cors({
-    origin: corsOrigins.length > 0 ? corsOrigins : 'http://localhost:3000',
+app.use(
+  cors({
+    origin: corsOrigins.length > 0 ? corsOrigins : "http://localhost:3000",
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
+// app.use(
+//   cors({
+//     origin: corsOrigins.length > 0 ? corsOrigins : 'http://localhost:3000',
+//     credentials: true,
+//     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+//     allowedHeaders: ["Content-Type", "Authorization"],
+//   }),
+// );
 
 // Request logging middleware
-app.use(morgan('combined', {
-    stream: { write: (message) => logger.info(message.trim()) }
-}));
+app.use(
+  morgan("combined", {
+    stream: { write: (message) => logger.info(message.trim()) },
+  }),
+);
 
 // Rate limiting
-app.use('/api/', apiLimiter);
+app.use("/api/", apiLimiter);
 
 // Webhook endpoints (MUST be before express.json() to use raw body)
 // Stripe webhook requires raw body for signature verification
@@ -57,26 +69,26 @@ app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
 // Trust proxy for correct client IP behind reverse proxy (Nginx, etc.)
-app.set('trust proxy', true);
+app.set("trust proxy", true);
 
 app.use("/api/v1", appRouter);
 
 // stating point
 app.get("/", (req: Request, res: Response) => {
-    res.status(200).json({
-        status: "success",
-        message: "Server is running successfully",
-        data: null,
-    });
+  res.status(200).json({
+    status: "success",
+    message: "Server is running successfully",
+    data: null,
+  });
 });
 
 // Health check endpoint
 app.get("/health", (req: Request, res: Response) => {
-    res.status(200).json({
-        status: "healthy",
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-    });
+  res.status(200).json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
 });
 
 // global error handler

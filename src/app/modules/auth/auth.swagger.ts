@@ -190,22 +190,28 @@ export const authSwaggerDocs = {
     post: {
       tags: ["Authentication"],
       summary: "Refresh access token",
-      description: "Get new access token using refresh token from cookie. Implements token rotation.",
-      requestBody: {
-        required: false,
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                refreshToken: { type: "string" },
+      description: "Get new access token using refresh token from cookie. Note: refreshToken cookie must be present.",
+      responses: {
+        200: { 
+          description: "Token refreshed successfully",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  success: { type: "boolean", example: true },
+                  message: { type: "string", example: "Token refreshed successfully" },
+                  data: {
+                    type: "object",
+                    properties: {
+                      accessToken: { type: "string" },
+                    },
+                  },
+                },
               },
             },
           },
         },
-      },
-      responses: {
-        200: { description: "Token refreshed successfully" },
         401: { description: "Invalid or expired refresh token" },
       },
     },
