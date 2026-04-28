@@ -8,28 +8,35 @@ import { SubscriptionPlan_Model, DEFAULT_PLANS } from '../modules/subscription/s
  */
 const seedSubscriptionPlans = async () => {
   try {
-    console.log('🌱 Starting to seed subscription plans...');
+    console.log('🌱 Syncing subscription plans with database...');
 
-    // Check if plans already exist
-    const existingPlans = await SubscriptionPlan_Model.countDocuments();
+    const planIds = DEFAULT_PLANS.map(p => p.planId);
+
+    // Remove plans that are no longer in DEFAULT_PLANS
+    const deleteResult = await SubscriptionPlan_Model.deleteMany({
+      planId: { $nin: planIds }
+    });
     
-    if (existingPlans > 0) {
-      console.log('✅ Subscription plans already exist. Skipping seed.');
-      return;
+    if (deleteResult.deletedCount > 0) {
+      console.log(`🗑️  Removed ${deleteResult.deletedCount} old subscription plans`);
     }
 
-    // Insert default plans
-    await SubscriptionPlan_Model.insertMany(DEFAULT_PLANS);
+    // Upsert default plans (ensure they are always up to date)
+    for (const plan of DEFAULT_PLANS) {
+      await SubscriptionPlan_Model.findOneAndUpdate(
+        { planId: plan.planId },
+        { $set: plan },
+        { upsert: true, new: true }
+      );
+    }
     
-    console.log('✅ Successfully seeded subscription plans:');
+    console.log('✅ Successfully synced subscription plans:');
     DEFAULT_PLANS.forEach(plan => {
-      console.log(`   - ${plan.name} (${plan.planId}) - $${plan.price / 100}`);
+      console.log(`   - ${plan.name} (${plan.planId}) - $${plan.price}/${plan.interval}`);
     });
 
-    console.log('\n💡 Next steps:');
-    console.log('   1. Update the stripePriceId fields with actual Stripe Price IDs');
-    console.log('   2. Create corresponding products in your Stripe Dashboard');
-    console.log('   3. Update webhook endpoint in Stripe: https://your-domain.com/webhooks/stripe');
+    console.log('\n💡 Stripe Sync:');
+    console.log('   The system will automatically attempt to sync these plans with Stripe on server start.');
 
   } catch (error) {
     console.error('❌ Failed to seed subscription plans:', error);

@@ -58,13 +58,13 @@ const syncPlansWithStripe = async () => {
       // Check if plan already exists with Stripe IDs
       const existingPlan = await SubscriptionPlan_Model.findOne({ planId: plan.planId });
       
-      if (existingPlan?.syncedToStripe && existingPlan.stripePriceId) {
+      if (existingPlan?.syncedToStripe && existingPlan.stripePriceId && existingPlan.price === plan.price) {
         console.log(`✅ Plan "${plan.name}" already synced to Stripe`);
         syncedCount++;
         continue;
       }
 
-      // Sync with Stripe
+      // Sync with Stripe (now more robust - uses list instead of search)
       try {
         const stripeData = await stripeService.syncPlanWithStripe({
           planId: plan.planId,
@@ -107,20 +107,31 @@ const syncPlansWithStripe = async () => {
  */
 const seedSubscriptionPlans = async () => {
   try {
-    // Check if plans already exist
-    const existingPlans = await SubscriptionPlan_Model.countDocuments();
+    console.log("🌱 Syncing subscription plans with database...");
 
-    if (existingPlans > 0) {
-      console.log("✅ Subscription plans already exist - skipping seed");
-      return;
+    const planIds = DEFAULT_PLANS.map(p => p.planId);
+
+    // Remove plans that are no longer in DEFAULT_PLANS
+    const deleteResult = await SubscriptionPlan_Model.deleteMany({
+      planId: { $nin: planIds }
+    });
+    
+    if (deleteResult.deletedCount > 0) {
+      console.log(`🗑️  Removed ${deleteResult.deletedCount} old subscription plans`);
     }
 
-    // Insert default plans (without Stripe IDs initially)
-    await SubscriptionPlan_Model.insertMany(DEFAULT_PLANS);
+    // Upsert default plans (ensure they are always up to date)
+    for (const plan of DEFAULT_PLANS) {
+      await SubscriptionPlan_Model.findOneAndUpdate(
+        { planId: plan.planId },
+        { $set: plan },
+        { upsert: true, new: true }
+      );
+    }
 
-    console.log(`✅ Seeded ${DEFAULT_PLANS.length} subscription plans:`);
+    console.log(`✅ Database strictly supports ${DEFAULT_PLANS.length} subscription plans:`);
     DEFAULT_PLANS.forEach(plan => {
-      console.log(`   • ${plan.name} - $${plan.price / 100}/${plan.interval}`);
+      console.log(`   • ${plan.name} - $${plan.price}/${plan.interval}`);
     });
 
   } catch (error) {

@@ -1,10 +1,12 @@
 import catchAsync from '../../utils/catch_async';
 import manageResponse from '../../utils/manage_response';
 import httpStatus from 'http-status';
+import { AppError } from '../../utils/app_error';
 import { Account_Model } from '../auth/auth.schema';
 import { Subscription_Model } from '../subscription/subscription.schema';
 import { Payment_Model } from '../subscription/payment.schema';
 import { SubscriptionPlan_Model } from '../subscription/subscription.plans';
+import { stripeService } from '../subscription/stripe.service';
 import { Signal_Model } from '../signal/signal.schema';
 import { Master_Model } from '../master/master.schema';
 import { Follow_Model } from '../follow/follow.schema';
@@ -286,19 +288,9 @@ const update_subscription_plan = catchAsync(async (req, res) => {
   const { id } = req.params;
   const { name, price, durationInDays, features, isActive } = req.body;
 
-  const updateData: Record<string, any> = {};
-  if (name !== undefined) updateData.name = name;
-  if (price !== undefined) updateData.price = price;
-  if (durationInDays !== undefined) updateData.durationInDays = durationInDays;
-  if (features !== undefined) updateData.features = features;
-  if (isActive !== undefined) updateData.isActive = isActive;
-
-  const plan = await SubscriptionPlan_Model.findByIdAndUpdate(id, updateData, {
-    new: true,
-    runValidators: true,
-  });
-
-  if (!plan) {
+  // Find existing plan first to check current price and stripeProductId
+  const existingPlan = await SubscriptionPlan_Model.findById(id);
+  if (!existingPlan) {
     manageResponse(res, {
       success: false,
       statusCode: httpStatus.NOT_FOUND,
@@ -307,6 +299,42 @@ const update_subscription_plan = catchAsync(async (req, res) => {
     });
     return;
   }
+
+  const updateData: Record<string, any> = {};
+  if (name !== undefined) updateData.name = name;
+  if (durationInDays !== undefined) updateData.durationInDays = durationInDays;
+  if (features !== undefined) updateData.features = features;
+  if (isActive !== undefined) updateData.isActive = isActive;
+
+  // Real-time Stripe Price Sync
+  if (price !== undefined && price !== existingPlan.price) {
+    updateData.price = price;
+    
+    // If the plan is already synced to Stripe, update the price there too
+    if (existingPlan.stripeProductId && existingPlan.syncedToStripe) {
+      try {
+        const newStripePrice = await stripeService.createPrice(
+          existingPlan.stripeProductId,
+          price * 100, // Stripe expects amount in cents
+          existingPlan.currency || 'usd',
+          existingPlan.interval
+        );
+        
+        updateData.stripePriceId = newStripePrice.id;
+        console.log(`✅ Stripe Price updated for plan ${existingPlan.planId}: ${newStripePrice.id}`);
+      } catch (error: any) {
+        console.error(`❌ Failed to update Stripe price for plan ${existingPlan.planId}:`, error.message);
+        // We might want to decide if we fail the whole request or just log the error
+        // For now, let's throw an error to ensure consistency
+        throw new AppError(`Stripe sync failed: ${error.message}`, httpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+  }
+
+  const plan = await SubscriptionPlan_Model.findByIdAndUpdate(id, updateData, {
+    new: true,
+    runValidators: true,
+  });
 
   manageResponse(res, {
     success: true,

@@ -62,80 +62,13 @@ export const SubscriptionPlan_Model = model<ISubscriptionPlan>(
 // Default plans to seed on first run
 export const DEFAULT_PLANS: Omit<ISubscriptionPlan, "_id">[] = [
   {
-    planId: "free",
-    name: "Free Plan",
-    description: "Get started with basic signal access",
-    price: 0,
-    currency: "usd",
-    interval: "month",
-    stripePriceId: "", // No Stripe price needed for free plan
-    features: [
-      "3 signals per month",
-      "Basic signal data only",
-      "No chart images",
-      "No video analysis",
-      "Community support",
-    ],
-    signalLimit: 3,
-    mediaAccess: false,
-    prioritySupport: false,
-    isActive: true,
-    tier: "free",
-    syncedToStripe: true, // Free plan doesn't need Stripe sync
-  },
-  {
-    planId: "basic_monthly",
-    name: "Basic Plan (Monthly)",
-    description: "Perfect for beginner traders",
-    price: 29, // $29.00
-    currency: "usd",
-    interval: "month",
-    stripePriceId: "price_basic_monthly", // Will be replaced with actual Stripe Price ID
-    features: [
-      "50 signals per month",
-      "All Master Traders",
-      "Chart images included",
-      "Email support",
-      "Basic analytics",
-    ],
-    signalLimit: 50,
-    mediaAccess: true,
-    prioritySupport: false,
-    isActive: true,
-    tier: "basic",
-    syncedToStripe: false,
-  },
-  {
-    planId: "basic_yearly",
-    name: "Basic Plan (Yearly)",
-    description: "Save 2 months with annual billing",
-    price: 290, // $290.00 (equivalent to 10 months)
-    currency: "usd",
-    interval: "year",
-    stripePriceId: "price_basic_yearly", // Will be replaced with actual Stripe Price ID
-    features: [
-      "50 signals per month",
-      "All Master Traders",
-      "Chart images included",
-      "Email support",
-      "Basic analytics",
-      "Save 2 months",
-    ],
-    signalLimit: 50,
-    mediaAccess: true,
-    prioritySupport: false,
-    isActive: true,
-    tier: "basic",
-    syncedToStripe: false,
-  },
-  {
     planId: "pro_monthly",
-    name: "Pro Plan (Monthly)",
-    description: "Advanced features for serious traders",
-    price: 79, // $79.00
+    name: "Monthly Subscription",
+    description: "Full access with monthly billing",
+    price: 49, // $49.00
     currency: "usd",
     interval: "month",
-    stripePriceId: "price_pro_monthly", // Will be replaced with actual Stripe Price ID
+    stripePriceId: "price_pro_monthly",
     features: [
       "Unlimited signals",
       "All Master Traders",
@@ -154,12 +87,12 @@ export const DEFAULT_PLANS: Omit<ISubscriptionPlan, "_id">[] = [
   },
   {
     planId: "pro_yearly",
-    name: "Pro Plan (Yearly)",
-    description: "Save 2 months with annual billing",
-    price: 790, // $790.00 (equivalent to 10 months)
+    name: "Yearly Subscription",
+    description: "Full access with yearly billing (Save 2 months)",
+    price: 500, // $500.00 (equivalent to 10 months)
     currency: "usd",
     interval: "year",
-    stripePriceId: "price_pro_yearly", // Will be replaced with actual Stripe Price ID
+    stripePriceId: "price_pro_yearly",
     features: [
       "Unlimited signals",
       "All Master Traders",
@@ -177,28 +110,5 @@ export const DEFAULT_PLANS: Omit<ISubscriptionPlan, "_id">[] = [
     tier: "pro",
     syncedToStripe: false,
   },
-  {
-    planId: "master_monthly",
-    name: "Master Trader Plan (Monthly)",
-    description: "For signal providers and expert traders",
-    price: 49, // $49.00
-    currency: "usd",
-    interval: "month",
-    stripePriceId: "price_master_monthly", // Will be replaced with actual Stripe Price ID
-    features: [
-      "Publish unlimited signals",
-      "Upload charts & videos",
-      "Follower statistics",
-      "Performance analytics",
-      "Revenue share (80%)",
-      "Priority support",
-      "Master Trader badge",
-    ],
-    signalLimit: -1, // Unlimited
-    mediaAccess: true,
-    prioritySupport: true,
-    isActive: true,
-    tier: "master",
-    syncedToStripe: false,
-  },
 ];
+

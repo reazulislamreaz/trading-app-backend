@@ -45,7 +45,7 @@ export const stripeService = {
     });
   },
 
-  // Sync Subscription Plan with Stripe (creates product + price if needed)
+  // Sync Subscription Plan with Stripe (creates product + price only if needed)
   async syncPlanWithStripe(planData: {
     planId: string;
     name: string;
@@ -55,28 +55,75 @@ export const stripeService = {
     interval: 'month' | 'year';
   }) {
     try {
-      // Create product
-      const product = await stripe.products.create({
-        name: planData.name,
-        description: planData.description,
-        metadata: { planId: planData.planId },
+      const unitAmount = planData.price * 100;
+      let productId: string;
+      let priceId: string | undefined;
+
+      // 1. Search for existing product using list (more reliable than search which has indexing delay)
+      const products = await stripe.products.list({
+        active: true,
+        limit: 100,
+        expand: ['data.default_price'],
       });
 
-      // Create price
-      const price = await stripe.prices.create({
-        product: product.id,
-        unit_amount: planData.price * 100,
-        currency: planData.currency,
-        recurring: { interval: planData.interval },
+      const existingProduct = products.data.find(
+        (p) => p.metadata.planId === planData.planId
+      );
+
+      if (existingProduct) {
+        productId = existingProduct.id;
+        console.log(`ℹ️  Found existing Stripe product for ${planData.planId}: ${productId}`);
+        
+        // Update product info if changed
+        if (existingProduct.name !== planData.name || existingProduct.description !== planData.description) {
+          await stripe.products.update(productId, {
+            name: planData.name,
+            description: planData.description,
+          });
+        }
+      } else {
+        // Create new product if not found
+        const product = await stripe.products.create({
+          name: planData.name,
+          description: planData.description,
+          metadata: { planId: planData.planId },
+        });
+        productId = product.id;
+        console.log(`🆕 Created new Stripe product for ${planData.planId}: ${productId}`);
+      }
+
+      // 2. Search for existing price with this amount and interval for this product
+      const existingPrices = await stripe.prices.list({
+        product: productId,
+        active: true,
+        limit: 100,
       });
 
-      console.log(`✅ Stripe sync for plan "${planData.name}":`);
-      console.log(`   Product ID: ${product.id}`);
-      console.log(`   Price ID: ${price.id}`);
+      const matchingPrice = existingPrices.data.find(
+        (p) =>
+          p.unit_amount === unitAmount &&
+          p.currency === planData.currency.toLowerCase() &&
+          p.recurring?.interval === planData.interval
+      );
+
+      if (matchingPrice) {
+        priceId = matchingPrice.id;
+        console.log(`ℹ️  Found existing Stripe price for ${planData.planId}: ${priceId}`);
+      } else {
+        // Create new price if not found
+        const price = await stripe.prices.create({
+          product: productId,
+          unit_amount: unitAmount,
+          currency: planData.currency,
+          recurring: { interval: planData.interval },
+        });
+        priceId = price.id;
+        console.log(`🆕 Created new Stripe price for ${planData.planId}: ${priceId}`);
+      }
 
       return {
-        stripeProductId: product.id,
-        stripePriceId: price.id,
+        stripeProductId: productId,
+        stripePriceId: priceId,
       };
     } catch (error: any) {
       console.error(`❌ Failed to sync plan "${planData.name}" with Stripe:`, error.message);
