@@ -48,4 +48,31 @@ const auth = (...roles: UserRoleType[]) => {
     };
 };
 
+export const optionalAuth = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const token = req.headers.authorization;
+
+        if (token && token.startsWith('Bearer ')) {
+            const accessToken = token.split(' ')[1];
+            try {
+                const verifiedUser = await jwtHelpers.verifyToken(
+                    accessToken,
+                    configs.jwt.access_token as string,
+                );
+
+                // check user
+                const isUserExist = await Account_Model.findOne({ email: verifiedUser?.email }).lean();
+                if (isUserExist && isUserExist.accountStatus !== 'SUSPENDED' && isUserExist.accountStatus !== 'INACTIVE' && !isUserExist.isDeleted) {
+                    req.user = verifiedUser;
+                }
+            } catch (err) {
+                // Ignore JWT errors for optional auth
+            }
+        }
+        next();
+    } catch (err) {
+        next();
+    }
+};
+
 export default auth;

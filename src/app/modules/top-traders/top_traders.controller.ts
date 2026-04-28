@@ -10,8 +10,9 @@ const get_top_traders = catchAsync(async (req: Request, res: Response) => {
   const sortBy = (req.query.sortBy as 'winRate' | 'avgPnl' | 'totalSignals' | 'followerCount') || 'winRate';
   const page = Number(req.query.page) || 1;
   const limit = Math.min(Number(req.query.limit) || 10, 100);
+  const currentUserId = req.user?.userId;
 
-  const result = await top_traders_services.get_top_traders(timeframe, sortBy, page, limit);
+  const result = await top_traders_services.get_top_traders(timeframe, sortBy, page, limit, currentUserId);
 
   manageResponse(res, {
     success: true,
@@ -23,12 +24,13 @@ const get_top_traders = catchAsync(async (req: Request, res: Response) => {
 
 const get_trader_performance = catchAsync(async (req: Request, res: Response) => {
   const accountId = req.params.accountId as string;
+  const currentUserId = req.user?.userId;
 
   if (!accountId) {
     throw new AppError('Account ID is required', httpStatus.BAD_REQUEST);
   }
 
-  const result = await top_traders_services.get_trader_performance(accountId);
+  const result = await top_traders_services.get_trader_performance(accountId, currentUserId);
 
   if (!result) {
     throw new AppError('Trader not found or not approved', httpStatus.NOT_FOUND);

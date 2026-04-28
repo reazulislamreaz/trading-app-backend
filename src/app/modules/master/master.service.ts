@@ -57,7 +57,8 @@ const get_master_profile = async (accountId: string) => {
 const get_all_masters = async (
   page: number = 1,
   limit: number = 10,
-  filters: { isFeatured?: boolean; search?: string } = {}
+  filters: { isFeatured?: boolean; search?: string } = {},
+  currentUserId?: string
 ) => {
   const skip = (page - 1) * limit;
 
@@ -105,8 +106,26 @@ const get_all_masters = async (
 
   const total = await Master_Model.countDocuments(query);
 
+  // If user is logged in, check which masters they follow in one go
+  let followedMasterIds: Set<string> = new Set();
+  if (currentUserId) {
+    const follows = await Follow_Model.find({
+      followerId: new Types.ObjectId(currentUserId),
+      masterId: { $in: masters.map(m => m.accountId) }
+    }).select('masterId');
+    followedMasterIds = new Set(follows.map(f => f.masterId.toString()));
+  }
+
+  const enrichedMasters = masters.map(master => {
+    const masterObj = master.toObject();
+    return {
+      ...masterObj,
+      isFollow: currentUserId ? followedMasterIds.has(master.accountId.toString()) : false
+    };
+  });
+
   return {
-    data: masters,
+    data: enrichedMasters,
     meta: {
       page,
       limit,
@@ -119,7 +138,7 @@ const get_all_masters = async (
 /**
  * Get master profile by ID
  */
-const get_master_by_id = async (masterId: string) => {
+const get_master_by_id = async (masterId: string, currentUserId?: string) => {
   if (!Types.ObjectId.isValid(masterId)) {
     throw new AppError('Invalid master ID', httpStatus.BAD_REQUEST);
   }
@@ -131,7 +150,21 @@ const get_master_by_id = async (masterId: string) => {
     throw new AppError('Master profile not found', httpStatus.NOT_FOUND);
   }
 
-  return master;
+  // Check if current user is following this master
+  let isFollow = false;
+  if (currentUserId) {
+    const isFollowExist = await Follow_Model.exists({
+      followerId: new Types.ObjectId(currentUserId),
+      masterId: master.accountId
+    });
+    isFollow = !!isFollowExist;
+  }
+
+  const masterObj = master.toObject();
+  return {
+    ...masterObj,
+    isFollow
+  };
 };
 
 /**

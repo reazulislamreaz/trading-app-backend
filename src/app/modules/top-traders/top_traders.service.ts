@@ -1,5 +1,6 @@
 import { Master_Model } from '../master/master.schema';
 import { Signal_Model } from '../signal/signal.schema';
+import { Follow_Model } from '../follow/follow.schema';
 import { Types } from 'mongoose';
 
 export type TimeframeType = 'week' | 'month' | 'all';
@@ -40,7 +41,8 @@ const get_top_traders = async (
   timeframe: TimeframeType = 'all',
   sortBy: SortByType = 'winRate',
   page: number = DEFAULT_PAGE,
-  limit: number = DEFAULT_LIMIT
+  limit: number = DEFAULT_LIMIT,
+  currentUserId?: string
 ) => {
   const { startDate } = getDateRange(timeframe);
   const skip = (page - 1) * limit;
@@ -58,6 +60,16 @@ const get_top_traders = async (
     .limit(limit);
 
   const total = await Master_Model.countDocuments();
+
+  // If user is logged in, check which masters they follow in one go
+  let followedMasterIds: Set<string> = new Set();
+  if (currentUserId) {
+    const follows = await Follow_Model.find({
+      followerId: new Types.ObjectId(currentUserId),
+      masterId: { $in: masters.map(m => m.accountId) }
+    }).select('masterId');
+    followedMasterIds = new Set(follows.map(f => f.masterId.toString()));
+  }
 
   // Enrich with recent signal performance for context
   const enrichedMasters = await Promise.all(
@@ -83,6 +95,7 @@ const get_top_traders = async (
         losingSignals: master.losingSignals,
         followerCount: master.followerCount,
         isFeatured: master.isFeatured,
+        isFollow: currentUserId ? followedMasterIds.has(master.accountId.toString()) : false,
         recentSignalsCount,
         rank: skip + masters.indexOf(master) + 1,
       };
@@ -105,13 +118,23 @@ const get_top_traders = async (
 /**
  * Get trader performance details for a specific master
  */
-const get_trader_performance = async (accountId: string) => {
+const get_trader_performance = async (accountId: string, currentUserId?: string) => {
   const master = await Master_Model.findOne({
     accountId: new Types.ObjectId(accountId),
   }).populate('accountId', 'name email userProfileUrl');
 
   if (!master) {
     return null;
+  }
+
+  // Check if current user is following this master
+  let isFollow = false;
+  if (currentUserId) {
+    const followRecord = await Follow_Model.findOne({
+      followerId: new Types.ObjectId(currentUserId),
+      masterId: new Types.ObjectId(accountId)
+    });
+    isFollow = !!followRecord;
   }
 
   // Get all signals for detailed breakdown
@@ -140,6 +163,7 @@ const get_trader_performance = async (accountId: string) => {
       userProfileUrl: (master.accountId as any)?.userProfileUrl || '',
       bio: master.bio,
       specialties: master.specialties,
+      isFollow,
     },
     performance: {
       winRate: master.winRate,

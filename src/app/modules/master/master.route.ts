@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { master_controllers } from './master.controller';
 import { master_validations } from './master.validation';
-import auth from '../../middlewares/auth';
+import auth, { optionalAuth } from '../../middlewares/auth';
 import RequestValidator from '../../middlewares/request_validator';
 
 const masterRouter = Router();
 
 // Public routes - view masters list
-masterRouter.get('/', master_controllers.get_all_masters);
+masterRouter.get('/', optionalAuth, master_controllers.get_all_masters);
 
 // Master-only routes (defined before parameterized :id to avoid conflicts)
 masterRouter.get('/profile/me', auth('MASTER'), master_controllers.get_my_profile);
@@ -21,7 +21,7 @@ masterRouter.patch(
 );
 
 // Public route - single master
-masterRouter.get('/:id', master_controllers.get_single_master);
+masterRouter.get('/:id', optionalAuth, master_controllers.get_single_master);
 
 // Admin-only routes
 masterRouter.patch('/featured/:id', auth('ADMIN'), master_controllers.toggle_featured);
