@@ -3,6 +3,7 @@ import httpStatus from 'http-status';
 import { Follow_Model } from './follow.schema';
 import { Account_Model } from '../auth/auth.schema';
 import { Master_Model } from '../master/master.schema';
+import { Signal_Model } from '../signal/signal.schema';
 import { Types } from 'mongoose';
 
 /**
@@ -103,7 +104,7 @@ const toggle_follow = async (followerId: string, masterId: string) => {
 };
 
 /**
- * Get masters that a user is following
+ * Get masters that a user is following (matches structure of top traders API)
  */
 const get_following = async (
   followerId: string,
@@ -112,10 +113,10 @@ const get_following = async (
 ) => {
   const skip = (page - 1) * limit;
 
+  // 1. Get follow relationships
   const follows = await Follow_Model.find({
     followerId: new Types.ObjectId(followerId),
   })
-    .populate('masterId', 'name email userProfileUrl')
     .skip(skip)
     .limit(limit);
 
@@ -123,13 +124,48 @@ const get_following = async (
     followerId: new Types.ObjectId(followerId),
   });
 
-  const masters = follows.map((f) => ({
-    ...f.toObject(),
-    master: f.masterId,
-  }));
+  const masterAccountIds = follows.map(f => f.masterId);
+
+  // 2. Get master profiles for these account IDs
+  const masters = await Master_Model.find({
+    accountId: { $in: masterAccountIds }
+  }).populate('accountId', 'name email userProfileUrl');
+
+  // 3. Enrich with performance data (matching top traders structure)
+  const enrichedMasters = await Promise.all(
+    masters.map(async (master) => {
+      // Get recent signals count (30 day default context matching 'month' timeframe)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const recentSignalsCount = await Signal_Model.countDocuments({
+        authorId: master.accountId,
+        status: 'closed',
+        closedAt: { $gte: thirtyDaysAgo },
+      });
+
+      return {
+        _id: master._id,
+        accountId: master.accountId,
+        name: (master.accountId as any)?.name || '',
+        userProfileUrl: (master.accountId as any)?.userProfileUrl || '',
+        bio: master.bio,
+        specialties: master.specialties,
+        winRate: master.winRate,
+        avgPnl: master.avgPnl,
+        totalSignals: master.totalSignals,
+        winningSignals: master.winningSignals,
+        losingSignals: master.losingSignals,
+        followerCount: master.followerCount,
+        isFeatured: master.isFeatured,
+        isFollow: true, // They are definitely following since we fetched from Follow_Model
+        recentSignalsCount,
+      };
+    })
+  );
 
   return {
-    data: masters,
+    data: enrichedMasters,
     meta: {
       page,
       limit,
