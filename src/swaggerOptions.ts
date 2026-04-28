@@ -144,8 +144,8 @@ export const swaggerOptions = {
             referralLink: { type: "string", example: "https://tradingapp.com/signup?ref=REF123456" },
             totalReferrals: { type: "integer", example: 10 },
             activeReferrals: { type: "integer", example: 5 },
-            totalRewards: { type: "integer", example: 500 },
-            walletBalance: { type: "integer", example: 1500 },
+            totalRewards: { type: "number", example: 50 },
+            walletBalance: { type: "number", example: 150 },
           },
         },
         WithdrawalStatus: {
@@ -158,7 +158,7 @@ export const swaggerOptions = {
           properties: {
             _id: { type: "string" },
             userId: { type: "string" },
-            amount: { type: "integer" },
+            amount: { type: "number" },
             paymentMethod: { type: "string" },
             paymentDetails: { type: "string" },
             status: { $ref: "#/components/schemas/WithdrawalStatus" },
@@ -182,7 +182,7 @@ export const swaggerOptions = {
           properties: {
             _id: { type: "string" },
             userId: { type: "string" },
-            amount: { type: "integer" },
+            amount: { type: "number" },
             type: { $ref: "#/components/schemas/WalletTransactionType" },
             status: { $ref: "#/components/schemas/WalletTransactionStatus" },
             referenceId: { type: "string" },
@@ -196,7 +196,7 @@ export const swaggerOptions = {
             _id: { type: "string" },
             inviteeName: { type: "string" },
             status: { $ref: "#/components/schemas/ReferralStatus" },
-            rewardAmount: { type: "integer" },
+            rewardAmount: { type: "number" },
             createdAt: { type: "string", format: "date-time" },
           },
         },
@@ -207,7 +207,7 @@ export const swaggerOptions = {
             referrerName: { type: "string" },
             inviteeName: { type: "string" },
             status: { $ref: "#/components/schemas/ReferralStatus" },
-            rewardAmount: { type: "integer" },
+            rewardAmount: { type: "number" },
             createdAt: { type: "string", format: "date-time" },
           },
         },
@@ -216,7 +216,7 @@ export const swaggerOptions = {
           properties: {
             totalReferrals: { type: "integer" },
             activeReferrals: { type: "integer" },
-            totalRewardsDistributed: { type: "integer" },
+            totalRewardsDistributed: { type: "number" },
             topReferrers: {
               type: "array",
               items: {
@@ -224,7 +224,7 @@ export const swaggerOptions = {
                 properties: {
                   name: { type: "string" },
                   count: { type: "integer" },
-                  rewards: { type: "integer" },
+                  rewards: { type: "number" },
                 },
               },
             },

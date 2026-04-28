@@ -4,7 +4,7 @@ export interface ISubscriptionPlan {
   planId: string;
   name: string;
   description: string;
-  price: number; // In cents
+  price: number; // In dollars
   currency: string;
   interval: "month" | "year";
   stripeProductId?: string; // Stripe Product ID
@@ -24,7 +24,7 @@ const subscriptionPlanSchema = new Schema<ISubscriptionPlan>(
     planId: { type: String, required: true }, // Indexed via schema.index() below
     name: { type: String, required: true },
     description: { type: String, required: true },
-    price: { type: Number, required: true }, // In cents
+    price: { type: Number, required: true }, // In dollars
     currency: { type: String, default: "usd" },
     interval: { type: String, enum: ["month", "year"], default: "month" },
     stripeProductId: { type: String }, // Stripe Product ID (optional for dev)
@@ -87,7 +87,7 @@ export const DEFAULT_PLANS: Omit<ISubscriptionPlan, "_id">[] = [
     planId: "basic_monthly",
     name: "Basic Plan (Monthly)",
     description: "Perfect for beginner traders",
-    price: 2900, // $29.00
+    price: 29, // $29.00
     currency: "usd",
     interval: "month",
     stripePriceId: "price_basic_monthly", // Will be replaced with actual Stripe Price ID
@@ -109,7 +109,7 @@ export const DEFAULT_PLANS: Omit<ISubscriptionPlan, "_id">[] = [
     planId: "basic_yearly",
     name: "Basic Plan (Yearly)",
     description: "Save 2 months with annual billing",
-    price: 29000, // $290.00 (equivalent to 10 months)
+    price: 290, // $290.00 (equivalent to 10 months)
     currency: "usd",
     interval: "year",
     stripePriceId: "price_basic_yearly", // Will be replaced with actual Stripe Price ID
@@ -132,7 +132,7 @@ export const DEFAULT_PLANS: Omit<ISubscriptionPlan, "_id">[] = [
     planId: "pro_monthly",
     name: "Pro Plan (Monthly)",
     description: "Advanced features for serious traders",
-    price: 7900, // $79.00
+    price: 79, // $79.00
     currency: "usd",
     interval: "month",
     stripePriceId: "price_pro_monthly", // Will be replaced with actual Stripe Price ID
@@ -156,7 +156,7 @@ export const DEFAULT_PLANS: Omit<ISubscriptionPlan, "_id">[] = [
     planId: "pro_yearly",
     name: "Pro Plan (Yearly)",
     description: "Save 2 months with annual billing",
-    price: 79000, // $790.00 (equivalent to 10 months)
+    price: 790, // $790.00 (equivalent to 10 months)
     currency: "usd",
     interval: "year",
     stripePriceId: "price_pro_yearly", // Will be replaced with actual Stripe Price ID
@@ -181,7 +181,7 @@ export const DEFAULT_PLANS: Omit<ISubscriptionPlan, "_id">[] = [
     planId: "master_monthly",
     name: "Master Trader Plan (Monthly)",
     description: "For signal providers and expert traders",
-    price: 4900, // $49.00
+    price: 49, // $49.00
     currency: "usd",
     interval: "month",
     stripePriceId: "price_master_monthly", // Will be replaced with actual Stripe Price ID

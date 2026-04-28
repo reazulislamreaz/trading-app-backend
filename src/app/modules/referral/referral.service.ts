@@ -5,6 +5,7 @@ import { AppError } from "../../utils/app_error";
 import httpStatus from "http-status";
 import { Types } from "mongoose";
 import crypto from "crypto";
+import { system_config_services } from "../system_config/system_config.service";
 
 /**
  * Generate a unique referral code
@@ -104,8 +105,15 @@ const complete_referral_in_db = async (inviteeId: string) => {
   });
 
   if (referral) {
-    // Award 500 cents ($5.00) for a successful referral
-    const REWARD_AMOUNT = 500;
+    // Get reward amount from system config (in dollars)
+    const config = await system_config_services.get_config();
+    const REWARD_AMOUNT = config.referralRewardAmount;
+
+    console.log(`[Referral] Completing referral for invitee: ${inviteeId}`);
+    console.log(`[Referral] Reward Amount: $${REWARD_AMOUNT}`);
+
+    const referrerAccount = await Account_Model.findById(referral.referrerId);
+    console.log(`[Referral] Referrer Wallet Balance Before: $${referrerAccount?.walletBalance || 0}`);
 
     await Referral_Model.findByIdAndUpdate(referral._id, {
       status: "COMPLETED",
@@ -113,9 +121,13 @@ const complete_referral_in_db = async (inviteeId: string) => {
     });
 
     // Update referrer's wallet balance
-    await Account_Model.findByIdAndUpdate(referral.referrerId, {
-      $inc: { walletBalance: REWARD_AMOUNT },
-    });
+    const updatedAccount = await Account_Model.findByIdAndUpdate(
+      referral.referrerId,
+      { $inc: { walletBalance: REWARD_AMOUNT } },
+      { new: true }
+    );
+    
+    console.log(`[Referral] Referrer Wallet Balance After: $${updatedAccount?.walletBalance || 0}`);
 
     // Create wallet transaction
     await WalletTransaction_Model.create({
@@ -139,3 +151,4 @@ export const referral_services = {
   complete_referral_in_db,
   generateReferralCode,
 };
+

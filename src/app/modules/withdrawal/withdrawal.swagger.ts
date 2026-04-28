@@ -13,7 +13,7 @@ export const withdrawalSwaggerDocs = {
               type: "object",
               required: ["amount", "paymentMethod", "paymentDetails"],
               properties: {
-                amount: { type: "integer", example: 1000, description: "Amount in cents" },
+                amount: { type: "number", example: 10, description: "Amount in dollars" },
                 paymentMethod: { type: "string", example: "bKash" },
                 paymentDetails: { type: "string", example: "017XXXXXXXX" },
               },

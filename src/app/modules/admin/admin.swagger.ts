@@ -64,7 +64,7 @@ export const adminSwaggerDocs = {
                       revenue: {
                         type: "object",
                         properties: {
-                          total: { type: "integer", example: 2589000, description: "Total revenue in cents" },
+                          total: { type: "number", example: 25890, description: "Total revenue in dollars" },
                           transactionCount: { type: "integer", example: 1456 },
                         },
                       },
@@ -73,7 +73,7 @@ export const adminSwaggerDocs = {
                         properties: {
                           total: { type: "integer", example: 450 },
                           active: { type: "integer", example: 125 },
-                          totalRewards: { type: "integer", example: 225000, description: "Total rewards distributed in cents" },
+                          totalRewards: { type: "number", example: 2250, description: "Total rewards distributed in dollars" },
                         },
                       },
                       recentSubscriptions: {
@@ -249,7 +249,7 @@ export const adminSwaggerDocs = {
                           },
                         },
                         stripePaymentIntentId: { type: "string" },
-                        amount: { type: "integer", example: 2900, description: "Amount in cents" },
+                        amount: { type: "number", example: 29, description: "Amount in dollars" },
                         currency: { type: "string", example: "usd" },
                         status: { type: "string", example: "succeeded" },
                         description: { type: "string", example: "Subscription renewal - pro_monthly" },
@@ -300,7 +300,7 @@ export const adminSwaggerDocs = {
               type: "object",
               properties: {
                 name: { type: "string", example: "Pro Plan Updated" },
-                price: { type: "integer", example: 8900, description: "Price in cents" },
+                price: { type: "number", example: 89, description: "Price in dollars" },
                 durationInDays: { type: "integer", example: 30 },
                 features: { type: "array", items: { type: "string" }, example: ["Feature 1", "Feature 2"] },
                 isActive: { type: "boolean", example: true },

@@ -15,6 +15,7 @@ import copiedTradeRouter from './app/modules/copied_trade/copied_trade.route';
 import { referral_routes } from './app/modules/referral/referral.route';
 import { withdrawal_routes } from './app/modules/withdrawal/withdrawal.route';
 import { wallet_transaction_routes } from './app/modules/wallet_transaction/wallet_transaction.route';
+import { system_config_routes } from './app/modules/system_config/system_config.route';
 
 const appRouter = Router();
 
@@ -44,6 +45,7 @@ const moduleRoutes = [
 
     // Admin module
     { path: '/admin', route: adminRouter },
+    { path: '/admin/settings', route: system_config_routes },
 ];
 
 moduleRoutes.forEach(route => appRouter.use(route.path, route.route));

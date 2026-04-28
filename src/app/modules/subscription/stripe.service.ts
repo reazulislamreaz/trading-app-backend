@@ -65,7 +65,7 @@ export const stripeService = {
       // Create price
       const price = await stripe.prices.create({
         product: product.id,
-        unit_amount: planData.price,
+        unit_amount: planData.price * 100,
         currency: planData.currency,
         recurring: { interval: planData.interval },
       });
