@@ -47,7 +47,7 @@ const auth = (...roles: UserRoleType[]) => {
         }
     };
 };
-
+// this is optional auth middleware
 export const optionalAuth = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const token = req.headers.authorization;
