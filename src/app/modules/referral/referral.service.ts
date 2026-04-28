@@ -13,7 +13,7 @@ const generateReferralCode = async (): Promise<string> => {
   let isUnique = false;
   let code = "";
   while (!isUnique) {
-    code = crypto.randomBytes(4).toString('hex').toUpperCase(); // 8 character hex string
+    code = crypto.randomBytes(4).toString("hex").toUpperCase(); // 8 character hex string
     const existing = await Account_Model.findOne({ referralCode: code });
     if (!existing) isUnique = true;
   }
@@ -32,21 +32,26 @@ const get_referral_stats_from_db = async (userId: string) => {
     account = await Account_Model.findByIdAndUpdate(
       userId,
       { referralCode: newCode },
-      { new: true }
+      { new: true },
     );
   }
 
-  const totalReferrals = await Referral_Model.countDocuments({ referrerId: userId });
-  const activeReferrals = await Referral_Model.countDocuments({ 
-    referrerId: userId, 
-    status: 'COMPLETED' 
+  const totalReferrals = await Referral_Model.countDocuments({
+    referrerId: userId,
   });
-  
+  const activeReferrals = await Referral_Model.countDocuments({
+    referrerId: userId,
+    status: "COMPLETED",
+  });
+
   const referrals = await Referral_Model.find({ referrerId: userId });
-  const totalRewards = referrals.reduce((sum, ref) => sum + (ref.rewardAmount || 0), 0);
+  const totalRewards = referrals.reduce(
+    (sum, ref) => sum + (ref.rewardAmount || 0),
+    0,
+  );
 
   // In production, base URL should come from config
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
   const referralLink = `${baseUrl}/login?ref=${account!.referralCode}`;
 
   return {
@@ -65,16 +70,16 @@ const get_referral_history_from_db = async (userId: string, query: any) => {
   const skip = (page - 1) * limit;
 
   const referrals = await Referral_Model.find({ referrerId: userId })
-    .populate('inviteeId', 'name email')
+    .populate("inviteeId", "name email")
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit);
 
   const total = await Referral_Model.countDocuments({ referrerId: userId });
 
-  const data = referrals.map(ref => ({
+  const data = referrals.map((ref) => ({
     _id: ref._id,
-    inviteeName: (ref.inviteeId as any)?.name || 'Unknown User',
+    inviteeName: (ref.inviteeId as any)?.name || "Unknown User",
     status: ref.status,
     rewardAmount: ref.rewardAmount,
     createdAt: ref.createdAt,
@@ -93,20 +98,23 @@ const get_referral_history_from_db = async (userId: string, query: any) => {
  * Mark a referral as completed when the invitee subscribes
  */
 const complete_referral_in_db = async (inviteeId: string) => {
-  const referral = await Referral_Model.findOne({ inviteeId, status: 'PENDING' });
-  
+  const referral = await Referral_Model.findOne({
+    inviteeId,
+    status: "PENDING",
+  });
+
   if (referral) {
     // Award 500 cents ($5.00) for a successful referral
-    const REWARD_AMOUNT = 500; 
-    
+    const REWARD_AMOUNT = 500;
+
     await Referral_Model.findByIdAndUpdate(referral._id, {
-      status: 'COMPLETED',
+      status: "COMPLETED",
       rewardAmount: REWARD_AMOUNT,
     });
 
     // Update referrer's wallet balance
     await Account_Model.findByIdAndUpdate(referral.referrerId, {
-      $inc: { walletBalance: REWARD_AMOUNT }
+      $inc: { walletBalance: REWARD_AMOUNT },
     });
 
     // Create wallet transaction
@@ -121,7 +129,7 @@ const complete_referral_in_db = async (inviteeId: string) => {
 
     return true;
   }
-  
+
   return false;
 };
 
