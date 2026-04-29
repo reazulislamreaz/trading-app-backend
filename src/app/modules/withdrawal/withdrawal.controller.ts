@@ -53,7 +53,7 @@ const get_all_withdrawals = catch_async(async (req: Request, res: Response) => {
 
 const update_withdrawal_status = catch_async(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const result = await withdrawal_services.update_withdrawal_status_in_db(id, req.body);
+  const result = await withdrawal_services.update_withdrawal_status_in_db(id as string, req.body);
 
   manageResponse(res, {
     statusCode: httpStatus.OK,

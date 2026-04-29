@@ -105,7 +105,7 @@ const get_my_analytics = catchAsync(async (req, res) => {
 
 const delete_master = catchAsync(async (req, res) => {
   const { id } = req.params;
-  const result = await master_services.delete_master(id);
+  const result = await master_services.delete_master(id as string);
 
   manageResponse(res, {
     success: true,

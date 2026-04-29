@@ -35,6 +35,8 @@ const corsOrigins = configs.allowed_origins
 app.use(
   cors({
     origin: corsOrigins.length > 0 ? corsOrigins : "http://localhost:3000",
+    // Allow all origins for development, but in production, you should specify allowed origins
+    // origin: "*",
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],

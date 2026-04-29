@@ -32,7 +32,7 @@ export const uploadToLocal = async (
 
   // Construct base URL based on environment
   let baseUrl: string;
-  
+
   if (configs.env === "production") {
     baseUrl = configs.jwt.front_end_url || "";
   } else {

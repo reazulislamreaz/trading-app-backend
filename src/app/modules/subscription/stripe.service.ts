@@ -67,7 +67,7 @@ export const stripeService = {
       });
 
       const existingProduct = products.data.find(
-        (p) => p.metadata.planId === planData.planId
+        (p: any) => p.metadata.planId === planData.planId
       );
 
       if (existingProduct) {
@@ -100,7 +100,7 @@ export const stripeService = {
       });
 
       const matchingPrice = existingPrices.data.find(
-        (p) =>
+        (p: any) =>
           p.unit_amount === unitAmount &&
           p.currency === planData.currency.toLowerCase() &&
           p.recurring?.interval === planData.interval
