@@ -40,6 +40,5 @@ export const uploadToLocal = async (
     const port = process.env.PORT || 5000;
     baseUrl = `http://10.10.11.30:${port}`;
   }
-
   return `${baseUrl}/uploads/${folder}/${filename}`;
 };
