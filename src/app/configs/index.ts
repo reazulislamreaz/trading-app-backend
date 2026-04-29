@@ -42,7 +42,7 @@ const validateSecret = (secret: string | undefined, name: string) => {
         );
     }
 };
-
+// test
 validateSecret(process.env.ACCESS_TOKEN, 'ACCESS_TOKEN');
 validateSecret(process.env.REFRESH_TOKEN, 'REFRESH_TOKEN');
 validateSecret(process.env.RESET_SECRET, 'RESET_SECRET');
