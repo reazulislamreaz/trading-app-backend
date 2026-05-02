@@ -1,153 +1,192 @@
-# API Documentation 📚
+# API Specification Reference 📚
 
 **Base URL**: `http://206.162.244.11:7777/api/v1`  
 **Swagger Docs**: [http://206.162.244.11:7778/docs](http://206.162.244.11:7778/docs)
 
----
-
-## 🔐 Authentication & Security
-
-All private endpoints require a Bearer Token in the `Authorization` header:  
-`Authorization: Bearer <your_access_token>`
-
-### Auth Endpoints
-
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/auth/register` | Register a new user | Public |
-| POST | `/auth/login` | Login and receive tokens (2FA supported) | Public |
-| POST | `/auth/logout` | Logout and blacklist tokens | Private |
-| POST | `/auth/refresh-token` | Get new access token using refresh cookie | Public |
-| GET | `/auth/me` | Get current user profile | Private |
-| POST | `/auth/verify-email` | Verify account with OTP | Public |
-| POST | `/auth/forgot-password` | Request password reset OTP | Public |
-| POST | `/auth/reset-password` | Reset password using OTP | Public |
-
-### Two-Factor Authentication (2FA)
-
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/auth/2fa/setup` | Initiate 2FA setup (returns QR code) | Private |
-| POST | `/auth/2fa/enable` | Enable 2FA after verification | Private |
-| POST | `/auth/2fa/disable` | Disable 2FA with current code | Private |
+This document provides a detailed technical reference for the Trading Signal Platform API. All requests must be made over HTTPS in production.
 
 ---
 
-## 💳 Subscriptions & Payments
+## 🔐 Global Security & Authentication
 
-### Plans & Checkout
+### Authorization Header
+Most endpoints require a valid JSON Web Token (JWT).
+```http
+Authorization: Bearer <access_token>
+```
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/subscription/plans` | List all available subscription plans | Public |
-| POST | `/subscription/checkout` | Create Stripe checkout session | Private |
-| GET | `/subscription/current` | Get current subscription details | Private |
-| POST | `/subscription/status` | Cancel or Resume subscription | Private |
-| POST | `/subscription/change-plan` | Upgrade or Downgrade plan | Private |
-| POST | `/subscription/billing-portal` | Get Stripe billing portal URL | Private |
-
----
-
-## 📊 Trading Signals
-
-### Public & Private Signals
-
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/signals` | List all signals (paginated, filters available) | Public |
-| GET | `/signals/:id` | Get single signal details | Public |
-| POST | `/signals` | Create a new signal (Master only) | Private |
-| PATCH | `/signals/:id` | Update or Close a signal | Private |
-| DELETE | `/signals/:id` | Cancel/Delete a signal | Private |
-| POST | `/signals/:id/like` | Like a signal | Private |
-| POST | `/signals/:id/share` | Track signal share | Private |
+### Access Tiers (Roles)
+- **PUBLIC**: No authentication required.
+- **USER**: Standard authenticated user.
+- **MASTER**: Verified trader with signal publishing rights.
+- **ADMIN**: Platform administrator with full oversight.
 
 ---
 
-## 🏆 Master Traders
+## 1. Authentication (Auth) 🔑
 
-### Profiles & Stats
+### Register Account
+`POST /auth/register` | **Role**: PUBLIC
+- **Description**: Creates a new account. An OTP verification email is sent asynchronously.
+- **Body**:
+  ```json
+  {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "SecurePass123!",
+    "confirmPassword": "SecurePass123!",
+    "referralCode": "OPTIONAL_CODE"
+  }
+  ```
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/masters` | List all Master Traders | Public |
-| GET | `/masters/:id` | Get Master profile by ID | Public |
-| PATCH | `/masters/profile` | Create/Update your Master profile | Private |
-| GET | `/masters/stats` | Get your performance stats | Private |
-| GET | `/masters/analytics` | Get detailed performance analytics | Private |
+### Login
+`POST /auth/login` | **Role**: PUBLIC
+- **Description**: Returns `accessToken` and `refreshToken` cookie. Supports TOTP-based 2FA.
+- **Body**:
+  ```json
+  {
+    "email": "john@example.com",
+    "password": "SecurePass123!",
+    "twoFactorCode": "123456" // Required only if 2FA is enabled
+  }
+  ```
 
----
-
-## 💰 Financials & Wallet
-
-### Transactions & Withdrawals
-
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/transactions` | Get wallet transaction history | Private |
-| GET | `/referrals` | Get referral stats and history | Private |
-| POST | `/withdrawals` | Request a withdrawal | Private |
-| GET | `/withdrawals` | Get withdrawal request history | Private |
-
----
-
-## 👤 User & Profile
-
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| PATCH | `/user/profile` | Update personal profile info | Private |
-| POST | `/upload/image` | Upload image to Cloudinary/S3 | Private |
-| GET | `/notifications` | Get user notifications | Private |
-
----
-
-## 🛠 Admin Endpoints
-
-| Method | Endpoint | Description | Role |
-|--------|----------|-------------|------|
-| GET | `/admin/users` | List all users | Admin |
-| PATCH | `/admin/users/:id/status` | Change user status (Active/Blocked) | Admin |
-| PATCH | `/admin/settings` | Update system configuration | Admin |
-| GET | `/admin/audit-logs` | View system audit logs | Admin |
+### Setup 2FA
+`POST /auth/2fa/setup` | **Role**: USER/MASTER/ADMIN
+- **Description**: Initiates TOTP setup. Returns QR code URL and backup codes.
+- **Body**: `{ "password": "CurrentPassword" }`
+- **Response**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "qrCodeUrl": "otpauth://totp/TradingApp...",
+      "backupCodes": ["A1B2-C3D4", "..."]
+    }
+  }
+  ```
 
 ---
 
-## 📋 Response Format
+## 2. Subscriptions & Billing (Stripe) 💳
 
-### Success Response
+### Create Checkout Session
+`POST /subscription/checkout` | **Role**: USER/MASTER/ADMIN
+- **Description**: Generates a Stripe Checkout URL for the chosen plan. Includes 7-day trial for new users.
+- **Body**:
+  ```json
+  {
+    "planId": "pro_monthly",
+    "returnUrl": "https://frontend.com/billing"
+  }
+  ```
+
+### Current Status
+`GET /subscription/current` | **Role**: USER/MASTER/ADMIN
+- **Description**: Retrieves current plan details, expiry date, and remaining signal limits.
+- **Response**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "tier": "pro",
+      "hasAccess": true,
+      "daysRemaining": 25,
+      "usage": { "used": 10, "limit": -1 }
+    }
+  }
+  ```
+
+---
+
+## 3. Trading Signals 📈
+
+### List Signals
+`GET /signals` | **Role**: PUBLIC (Gated)
+- **Query Params**: `page`, `limit`, `assetType`, `status`, `authorId`, `search`.
+- **Note**: Public users see limited data; subscribers see full entry/exit targets.
+
+### Create Signal
+`POST /signals` | **Role**: MASTER
+- **Body**:
+  ```json
+  {
+    "title": "EUR/USD Bullish Breakout",
+    "symbol": "EURUSD",
+    "assetType": "forex",
+    "signalType": "long",
+    "entryPrice": 1.0850,
+    "stopLoss": 1.0820,
+    "takeProfit1": 1.0900,
+    "publishType": "scheduled",
+    "scheduledAt": "2026-05-10T10:00:00Z"
+  }
+  ```
+
+---
+
+## 4. Master Traders 🏆
+
+### List Master Traders
+`GET /masters` | **Role**: PUBLIC
+- **Query Params**: `isFeatured`, `search`.
+- **Response**: Array of master profiles with win-rates and follower counts.
+
+### Master Analytics
+`GET /masters/analytics` | **Role**: MASTER
+- **Description**: Detailed performance metrics including PnL growth charts and asset distribution.
+
+---
+
+## 5. Financials & Wallet 💰
+
+### Request Withdrawal
+`POST /withdrawals` | **Role**: MASTER
+- **Description**: Submit a request to withdraw earned funds.
+- **Body**: `{ "amount": 500, "method": "USDT", "address": "0x..." }`
+
+### Transaction History
+`GET /transactions` | **Role**: USER/MASTER/ADMIN
+- **Description**: List all wallet movements (referrals, bonuses, withdrawals).
+
+---
+
+## 🛠 Admin Controls 🛡️
+
+### Platform Analytics
+`GET /admin/analytics` | **Role**: ADMIN
+- **Data**: Total Revenue, Active Subs, User Growth, Signal Accuracy.
+
+### Approve Master
+`POST /admin/masters/approve/:id` | **Role**: ADMIN
+- **Description**: Elevate a USER to MASTER role after vetting.
+
+---
+
+## 📋 Standardized Response Schemas
+
+### Success Template
 ```json
 {
   "success": true,
-  "message": "Operation successful",
   "statusCode": 200,
-  "data": { ... },
-  "meta": { "page": 1, "limit": 10, "total": 100 } // Optional pagination
+  "message": "Operation successful",
+  "data": {},
+  "meta": { "total": 100, "page": 1, "limit": 10 }
 }
 ```
 
-### Error Response
+### Error Template
 ```json
 {
   "success": false,
-  "message": "Error description",
+  "statusCode": 400,
+  "message": "Validation Failed",
   "errorMessages": [
-    { "path": "email", "message": "Invalid email format" }
-  ],
-  "stack": "..." // Only in development mode
+    { "path": "email", "message": "Email already exists" }
+  ]
 }
 ```
 
 ---
-
-## 🚦 Common Status Codes
-- `200 OK`: Request successful.
-- `201 Created`: Resource created successfully.
-- `400 Bad Request`: Validation error or invalid input.
-- `401 Unauthorized`: Missing or invalid authentication token.
-- `403 Forbidden`: Insufficient permissions (role mismatch).
-- `404 Not Found`: Resource does not exist.
-- `429 Too Many Requests`: Rate limit exceeded.
-- `500 Internal Server Error`: Something went wrong on the server.
-
----
-*For detailed request bodies and field descriptions, please refer to the [Swagger Documentation](http://206.162.244.11:7778/docs).*
+*For interactive testing and real-time schema discovery, visit our [Swagger UI](http://206.162.244.11:7778/docs).*
