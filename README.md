@@ -1,133 +1,169 @@
-# Trading Signal Platform & Dashboard 🚀
+# Trading Signal Dashboard - Enterprise SaaS Platform 🚀
 
 ![Dashboard Login](https://i.postimg.cc/CKD0QCRb/Screenshot-from-2026-05-02-10-45-34.png)
 
-### Institutional-Grade Trading Signal & Copy-Trading Infrastructure
+### The Ultimate Infrastructure for Trading Communities & Signal Providers
 
-The **Trading Signal Platform** is a full-stack, production-ready SaaS ecosystem designed to connect professional traders with a global community of investors. Built on a modular **Express 5 + TypeScript** foundation, it provides a centralized dashboard for real-time signal distribution, automated trade journaling, and robust financial ledger management.
-
-[Live Dashboard](http://206.162.244.11:7778/) • [API Specification](http://206.162.244.11:7777) • [Interactive Swagger](http://206.162.244.11:7778/docs)
+**Trading Signal Dashboard** is a sophisticated, full-stack SaaS ecosystem engineered to bridge the gap between professional trading experts and retail investors. Built with an institutional-grade **Express 5 + TypeScript** backend and a high-performance **Next.js** frontend, the platform provides a centralized hub for real-time signal distribution, automated performance tracking, and complex subscription management.
 
 ---
 
-## 🎯 Core Purpose
+## 🔗 Live Ecosystem
 
-This platform solves the most critical scaling challenges for trading communities and signal providers:
-
-*   **Trader Management**: Centralized control for onboarding and vetting Master Traders.
-*   **Real-Time Distribution**: Low-latency signal delivery across the entire user base.
-*   **Performance Transparency**: Automated tracking of win-rates and PnL to build institutional trust.
-*   **Monetization & Ledger**: Integrated Stripe billing with a secure internal wallet for referrals and withdrawals.
+*   **Platform Dashboard**: [http://206.162.244.11:7778/](http://206.162.244.11:7778/)
+*   **Production API**: [http://206.162.244.11:7777](http://206.162.244.11:7777)
+*   **Interactive API Docs**: [http://206.162.244.11:7778/docs](http://206.162.244.11:7778/docs)
 
 ---
 
-## ✨ Features at a Glance
+## 💡 The Problem & Our Solution
 
-### 🔐 Security & Identity
-*   **Enterprise Auth**: JWT rotation, TOTP-based 2FA, and account verification flows.
-*   **Granular RBAC**: Strict access control for Admins, Master Traders, and Subscribers.
+**The Problem**: Signal providers often struggle with manual distribution via Telegram/Discord, lacks transparent performance metrics, and face administrative nightmares managing subscriptions and referrals.
 
-### 📊 Signal Engine
-*   **Lifecycle Management**: Create, schedule, draft, and close signals with automated result tracking.
-*   **Engagement Analytics**: Real-time tracking of Likes, Bookmarks, and Shares.
-
-### 📈 Performance Ecosystem
-*   **Master Analytics**: Detailed PnL growth charts, win-rates, and asset distribution.
-*   **Leaderboards**: Composite scoring algorithms (Activity + Accuracy + Profitability).
-*   **Copy Journal**: Automated user trade journaling based on followed signals.
-
-### 💰 Fintech Suite
-*   **Stripe Integration**: Automated checkout, prorated billing, and 7-day trials.
-*   **Wallet & Ledger**: Secure internal balance tracking for referral bonuses and withdrawals.
+**Our Solution**: An all-in-one automated platform that provides:
+1.  **Transparency**: Verified win-rates and PnL metrics for all Master Traders.
+2.  **Automation**: Webhook-driven Stripe billing and scheduled signal publishing.
+3.  **Engagement**: Gamified contribution points and global leaderboards.
+4.  **Financial Integrity**: Secure wallet system for referrals and payouts.
 
 ---
 
-## 🏗️ Technical Architecture
+## 🛠️ Complete Feature Breakdown
 
-The backend follows a **Modular Monolith** pattern, ensuring each core domain (Auth, Signal, Billing) is encapsulated yet interoperable.
+### 🔐 1. Authentication & Security (Enterprise-Grade)
+*   **JWT Ecosystem**: Dual-token system (Access/Refresh) with rotation for maximum security.
+*   **Two-Factor Authentication (2FA)**: TOTP integration (Google Authenticator) with encrypted backup codes.
+*   **Account Verification**: Async email verification flow with high-speed registration.
+*   **Rate Limiting**: Adaptive throttling to prevent brute-force and DDoS attacks.
 
-```text
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│  Auth & 2FA     │     │  Signal Engine   │     │  Billing & Pay  │
-│ (JWT + TOTP)    │     │ (Schedule/Draft) │     │ (Stripe Webhook)│
-└────────┬────────┘     └────────┬─────────┘     └────────┬────────┘
-         │                       │                        │
-         └───────────┬───────────┴───────────┬────────────┘
-                     ▼                       ▼
-            ┌─────────────────────────────────────────┐
-            │         Modular API Gateway (V1)        │
-            │ (Rate Limiting · Validation · Security) │
-            └────────────────────┬────────────────────┘
-                                 │
-                     ┌───────────┴───────────┐
-                     ▼                       ▼
-            ┌─────────────────┐     ┌──────────────────┐
-            │  Mongoose ODM   │     │  Cloud Services  │
-            │ (MongoDB 7.0)   │     │ (S3/Stripe/SMTP) │
-            └─────────────────┘     └──────────────────┘
-```
+### 💳 2. Subscription & Billing (Stripe Native)
+*   **Tiered Access**: Free, Basic, Pro, and Master plans with enforced signal limits.
+*   **Automated Lifecycle**: Prorated upgrades, trial management (7 days), and auto-downgrades via Stripe Webhooks.
+*   **Billing Portal**: Self-service management for payment methods and invoice history.
 
----
+### 📊 3. Signal Engine (Real-Time Intelligence)
+*   **Precision Entry**: Detailed signal parameters (Stop Loss, TP1, TP2, TP3, Entry Range).
+*   **Scheduled Publishing**: Draft signals and schedule them for future release.
+*   **Engagement Tracking**: Track Likes, Shares, and Bookmarks to measure signal sentiment.
+*   **Asset Support**: Native support for Forex, Crypto, Stocks, Indices, and Commodities.
 
-## 🛠️ Tech Stack
+### 🏆 4. Performance & Gamification
+*   **Composite Leaderboard**: Advanced scoring based on Win-Rate (40%), PnL (30%), Followers (20%), and Activity (10%).
+*   **Contribution Points**: Multi-action reward system (View: 1pt, Like: 2pts, Win: 15pts).
+*   **Trade Journal**: Automated logging for users who "copy" signals, including result reporting and screenshots.
 
-| Layer | Technology |
-| :--- | :--- |
-| **Backend** | Node.js (v20+), Express.js (v5.1.0), TypeScript |
-| **Frontend** | Next.js, React.js, Tailwind CSS |
-| **Database** | MongoDB + Mongoose ODM |
-| **Security** | JWT, OTPAuth, Bcrypt, Helmet, Rate-Limit |
-| **Storage** | AWS S3 & Cloudinary |
-| **DevOps** | Docker, PM2, GitHub Actions |
+### 💰 5. Financial Suite (Wallet & Referral)
+*   **Referral System**: Configurable referral rewards ($10 default) managed via system configuration.
+*   **Withdrawal Workflow**: Secure request system for Master Traders and Referrers to cash out earnings.
+*   **Transaction Ledger**: Full audit trail of every credit/debit within the platform.
+
+### 🛡️ 6. Admin & System Control
+*   **Master Vetting**: Admin review workflow to approve/reject Master Trader applications.
+*   **Featured Content**: Toggle "Featured" status for top signals or traders to drive visibility.
+*   **System Config**: Live updates for referral amounts and platform-wide settings.
+*   **Broadcast System**: Send global notifications to all users simultaneously.
 
 ---
 
-## 🚦 API at a Glance
+## 👥 User Roles & Permissions
 
-The platform exposes a RESTful API under `/api/v1`.
+| Role | Permissions | Core Workflow |
+| :--- | :--- | :--- |
+| **Admin** | Full System Access | Reviewing masters, managing revenue, system-wide settings. |
+| **Master Trader** | Create/Manage Signals | Publishing trade ideas, analyzing performance, requesting payouts. |
+| **User** | Browse/Follow Signals | Subscribing to plans, following masters, journaling trades. |
 
-### 🔑 Authentication
-*   `POST /auth/register` - Create account with email verification.
-*   `POST /auth/login` - Authenticate & receive tokens.
-*   `POST /auth/2fa/setup` - **[Private]** Initialize TOTP setup.
+---
 
-### 💳 Subscriptions
-*   `GET /subscription/plans` - Browse available tiers.
-*   `POST /subscription/checkout` - **[Private]** Start Stripe payment flow.
+## 🏗️ System Architecture
 
-### 📊 Signals & Performance
-*   `GET /signals` - List all active trading signals.
-*   `POST /signals` - **[Master]** Publish new trading insights.
-*   `GET /leaderboard` - View top performers by composite score.
+The project utilizes a strict **Controller-Service-Model** pattern to ensure maintainability and testability.
 
-> **Full Specification**: See [API_DOCUMENTATION.md](./API_DOCUMENTATION.md) for detailed schemas and role-based permissions.
+1.  **Route Layer**: Handles URI mapping and standardizes middleware entry.
+2.  **Controller Layer**: Manages HTTP request/response and maps DTOs.
+3.  **Service Layer**: **The Brain**. Contains 100% of the business logic, transaction management, and third-party integrations.
+4.  **Model Layer**: Mongoose-based data schemas with optimized indexing.
+
+---
+
+## 💻 Tech Stack
+
+*   **Backend**: Node.js, Express.js (v5.1), TypeScript, MongoDB/Mongoose.
+*   **Frontend**: Next.js, React, Tailwind CSS, Shadcn UI.
+*   **Integrations**: Stripe (Payments), AWS S3 (Media), Cloudinary (Images), Nodemailer (Emails).
+*   **Security**: JWT, Bcrypt, OTPAuth, Helmet.
+
+---
+
+## 🚦 API Overview (V1)
+
+### Core Endpoints
+*   `POST /auth/login` - Authenticate & receive JWT tokens.
+*   `POST /subscription/checkout` - Initialize Stripe payment flow.
+*   `GET /signals` - Retrieve signals based on subscription tier.
+*   `POST /withdrawals` - Submit payout requests.
+*   `GET /leaderboard` - Fetch ranked trader performance.
+
+> **Full Documentation**: [Explore the API Specification Reference](./API_DOCUMENTATION.md)
 
 ---
 
 ## ⚙️ Setup & Installation
 
-### Prerequisites
-*   Node.js v20+ & MongoDB
-*   Stripe API Keys (for billing)
-*   AWS S3 or Cloudinary (for media)
+```bash
+# 1. Clone & Install
+git clone https://github.com/reazulislamreaz/trading-app-backend.git
+cd trading-app-backend
+npm install
 
-### Installation
-1.  **Clone & Install**
-    ```bash
-    git clone <your-repo-url>
-    cd trading-app-backend
-    npm install
-    ```
-2.  **Environment Setup**
-    ```bash
-    cp .env.example .env # Update with your keys
-    ```
-3.  **Bootstrap & Run**
-    ```bash
-    npm run seed # Seeds admin, plans, and demo data
-    npm run dev  # Starts HMR development server
-    ```
+# 2. Configure Environment
+cp .env.example .env # Add your DB_URL, STRIPE_SECRET, AWS_KEYS, etc.
+
+# 3. Bootstrap System
+npm run seed # Synchronizes Stripe plans & creates Admin user
+
+# 4. Launch
+npm run dev # HMR Development Server
+```
 
 ---
 
+## 📂 Folder Structure
+```text
+src/
+├── app/
+│   ├── configs/      # Global configurations (DB, Stripe, AWS)
+│   ├── middlewares/  # Auth, SubscriptionGuard, RateLimiter
+│   ├── modules/      # Domain-driven features (Signal, Auth, Wallet)
+│   ├── types/        # Global TS interfaces & Enums
+│   └── utils/        # JWT, Email, 2FA, Seeding logic
+├── server.ts         # Application Entry Point
+└── routes.ts         # Root Router Gateway
+```
+
+---
+
+## 🧠 Engineering Decisions & Challenges
+
+*   **Challenge**: Ensuring signal privacy without leaking targets in the API.
+    *   **Decision**: Implemented a "Signal Guard" in the controller level that masks `entryPrice` and `targets` based on the user's active subscription tier.
+*   **Challenge**: Stripe/Database desynchronization.
+    *   **Decision**: Developed an idempotent Webhook handler that utilizes an in-memory event cache to prevent duplicate processing of Stripe events.
+*   **Challenge**: Scalable Leaderboard calculation.
+    *   **Decision**: Utilized MongoDB Aggregation Pipelines to calculate composite scores on-the-fly, ensuring the leaderboard remains real-time without heavy database load.
+
+---
+
+## 🚀 Future Improvements
+- [ ] **Real-time Engine**: Integrate WebSockets/Socket.io for sub-second signal alerts.
+- [ ] **Exchange Bridge**: Automated trade execution via Binance/MetaTrader APIs.
+- [ ] **AI Vetting**: Machine-learning layer to flag high-risk or manipulative signals.
+- [ ] **Mobile Client**: Dedicated Flutter/React Native application for push notifications.
+
+---
+
+## 📈 Conclusion
+The **Trading Signal Dashboard** is more than just a signal bot; it is a comprehensive financial ecosystem. By combining strict security protocols with automated billing and verified performance metrics, it offers the most reliable infrastructure for modern trading communities.
+
+---
 **Developed with ❤️ by [Reazul Islam Reaz](https://github.com/reazulislamreaz)**
