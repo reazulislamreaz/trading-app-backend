@@ -12,7 +12,7 @@
 
 - **Platform Dashboard**: [http://206.162.244.11:7778/](http://206.162.244.11:7778/)
 - **Production API**: [http://206.162.244.11:7777](http://206.162.244.11:7777)
-- **Interactive API Docs**: [http://206.162.244.11:7777/docs](http://206.162.244.11:7778/docs)
+- **Interactive API Docs**: [http://206.162.244.11:7777/docs](http://206.162.244.11:7777/docs)
 
 ---
 
