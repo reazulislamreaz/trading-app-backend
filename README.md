@@ -1,6 +1,6 @@
 # Trading Signal Dashboard - Enterprise SaaS Platform 🚀
 
-![Dashboard Login](https://i.postimg.cc/CKD0QCRb/Screenshot-from-2026-05-02-10-45-34.png)
+![Dashboard Overview](https://i.postimg.cc/Dyx6Gtwn/Screenshot-from-2026-05-02-11-55-41.png)
 
 ### The Ultimate Infrastructure for Trading Communities & Signal Providers
 
