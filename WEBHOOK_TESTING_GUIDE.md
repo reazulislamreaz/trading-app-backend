@@ -6,7 +6,7 @@ The Stripe webhook integration has been fixed to properly handle signature verif
 
 ### What Was Fixed
 
-1. **Middleware Order** - Webhook route is now registered **before** `express.json()` middleware
+1. **Middleware Order** - Webhook route is now registered **before** `express.json()` middleware.
 2. **Raw Body Parser** - Webhook route uses `express.raw({ type: 'application/json' })` instead of JSON parser
 3. **Buffer Handling** - Properly converts body to Buffer for Stripe signature verification
 4. **Error Handling** - Returns proper HTTP status codes (400 for signature failure, 500 for handler errors)
