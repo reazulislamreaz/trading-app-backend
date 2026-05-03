@@ -127,31 +127,36 @@ const verify_email = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const resend_verification_email = catchAsync(async (req: Request, res: Response) => {
-  const { email } = req.body;
-  const result = await auth_services.resend_verification_email_from_db(email);
-  
-  manageResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: result,
-    data: null,
-  });
-});
+const resend_verification_email = catchAsync(
+  async (req: Request, res: Response) => {
+    const { email } = req.body;
+    const result = await auth_services.resend_verification_email_from_db(email);
+
+    manageResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: result,
+      data: null,
+    });
+  },
+);
 
 const logout_user = catchAsync(async (req: Request, res: Response) => {
-  const accessToken = req.headers.authorization?.split(' ')[1];
+  const accessToken = req.headers.authorization?.split(" ")[1];
   const { refreshToken } = req.cookies;
   
   if (!accessToken || !refreshToken) {
     throw new AppError("Tokens required for logout", httpStatus.BAD_REQUEST);
   }
-  
-  const result = await auth_services.logout_user_from_db(accessToken, refreshToken);
-  
+
+  const result = await auth_services.logout_user_from_db(
+    accessToken,
+    refreshToken,
+  );
+
   // Clear cookie
   res.clearCookie("refreshToken");
-  
+
   manageResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -164,9 +169,9 @@ const logout_user = catchAsync(async (req: Request, res: Response) => {
 const setup_two_factor = catchAsync(async (req: Request, res: Response) => {
   const { email } = req.user!;
   const { password } = req.body;
-  
+
   const result = await auth_services.setup_two_factor_from_db(email, password);
-  
+
   manageResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -178,9 +183,12 @@ const setup_two_factor = catchAsync(async (req: Request, res: Response) => {
 const enable_two_factor = catchAsync(async (req: Request, res: Response) => {
   const { email } = req.user!;
   const { twoFactorCode } = req.body;
-  
-  const result = await auth_services.enable_two_factor_from_db(email, twoFactorCode);
-  
+
+  const result = await auth_services.enable_two_factor_from_db(
+    email,
+    twoFactorCode,
+  );
+
   manageResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -192,9 +200,12 @@ const enable_two_factor = catchAsync(async (req: Request, res: Response) => {
 const disable_two_factor = catchAsync(async (req: Request, res: Response) => {
   const { email } = req.user!;
   const { twoFactorCode } = req.body;
-  
-  const result = await auth_services.disable_two_factor_from_db(email, twoFactorCode);
-  
+
+  const result = await auth_services.disable_two_factor_from_db(
+    email,
+    twoFactorCode,
+  );
+
   manageResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -206,9 +217,9 @@ const disable_two_factor = catchAsync(async (req: Request, res: Response) => {
 const use_backup_code = catchAsync(async (req: Request, res: Response) => {
   const { email } = req.body;
   const { backupCode } = req.body;
-  
+
   const result = await auth_services.use_backup_code_from_db(email, backupCode);
-  
+
   res.cookie("refreshToken", result.refreshToken, {
     secure: configs.env === "production",
     httpOnly: true,
@@ -216,7 +227,7 @@ const use_backup_code = catchAsync(async (req: Request, res: Response) => {
     path: "/",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
-  
+
   manageResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
