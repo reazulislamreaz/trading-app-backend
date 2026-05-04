@@ -10,6 +10,8 @@ import { Copied_Trade_Model } from '../copied_trade/copied_trade.schema';
 import { Notification_Model } from '../notification/notification.schema';
 import { Contribution_Model } from '../contribution/contribution.schema';
 import { TMasterProfile } from './master.interface';
+import { referral_services } from '../referral/referral.service';
+import { Referral_Model } from '../referral/referral.schema';
 
 /**
  * Create or update master profile for the authenticated user
@@ -48,7 +50,16 @@ const get_master_profile = async (accountId: string) => {
     throw new AppError('Master profile not found', httpStatus.NOT_FOUND);
   }
 
-  return master;
+  const activeReferrals = await Referral_Model.countDocuments({
+    referrerId: master.accountId._id,
+    status: "COMPLETED",
+  });
+  const referralBadge = referral_services.get_badge_by_referral_count(activeReferrals);
+
+  return {
+    ...master.toObject(),
+    referralBadge,
+  };
 };
 
 /**
@@ -116,11 +127,25 @@ const get_all_masters = async (
     followedMasterIds = new Set(follows.map(f => f.masterId.toString()));
   }
 
+  // Get referral badges for all masters in the list
+  const masterAccountIds = masters.map(m => m.accountId._id);
+  const referralCounts = await Referral_Model.aggregate([
+    { $match: { referrerId: { $in: masterAccountIds }, status: "COMPLETED" } },
+    { $group: { _id: "$referrerId", count: { $sum: 1 } } }
+  ]);
+
+  const referralBadgeMap: Record<string, string> = {};
+  referralCounts.forEach(rc => {
+    referralBadgeMap[rc._id.toString()] = referral_services.get_badge_by_referral_count(rc.count);
+  });
+
   const enrichedMasters = masters.map(master => {
     const masterObj = master.toObject();
+    const accountId = master.accountId._id.toString();
     return {
       ...masterObj,
-      isFollow: currentUserId ? followedMasterIds.has(master.accountId.toString()) : false
+      isFollow: currentUserId ? followedMasterIds.has(master.accountId.toString()) : false,
+      referralBadge: referralBadgeMap[accountId] || "Rookie"
     };
   });
 
@@ -150,6 +175,12 @@ const get_master_by_id = async (masterId: string, currentUserId?: string) => {
     throw new AppError('Master profile not found', httpStatus.NOT_FOUND);
   }
 
+  const activeReferrals = await Referral_Model.countDocuments({
+    referrerId: master.accountId._id,
+    status: "COMPLETED",
+  });
+  const referralBadge = referral_services.get_badge_by_referral_count(activeReferrals);
+
   // Check if current user is following this master
   let isFollow = false;
   if (currentUserId) {
@@ -163,7 +194,8 @@ const get_master_by_id = async (masterId: string, currentUserId?: string) => {
   const masterObj = master.toObject();
   return {
     ...masterObj,
-    isFollow
+    isFollow,
+    referralBadge,
   };
 };
 

@@ -144,6 +144,7 @@ export const swaggerOptions = {
             referralLink: { type: "string", example: "https://tradingapp.com/signup?ref=REF123456" },
             totalReferrals: { type: "integer", example: 10 },
             activeReferrals: { type: "integer", example: 5 },
+            badge: { type: "string", example: "Bronze" },
             totalRewards: { type: "number", example: 50 },
             walletBalance: { type: "number", example: 150 },
           },

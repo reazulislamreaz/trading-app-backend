@@ -21,6 +21,14 @@ const generateReferralCode = async (): Promise<string> => {
   return code;
 };
 
+const get_badge_by_referral_count = (count: number): string => {
+  if (count > 50) return "Platinum";
+  if (count > 30) return "Gold";
+  if (count > 15) return "Silver";
+  if (count > 5) return "Bronze";
+  return "Rookie";
+};
+
 const get_referral_stats_from_db = async (userId: string) => {
   let account = await Account_Model.findById(userId);
   if (!account) {
@@ -45,6 +53,9 @@ const get_referral_stats_from_db = async (userId: string) => {
     status: "COMPLETED",
   });
 
+  // Calculate badge based on active referrals
+  const badge = get_badge_by_referral_count(activeReferrals);
+
   const referrals = await Referral_Model.find({ referrerId: userId });
   const totalRewards = referrals.reduce(
     (sum, ref) => sum + (ref.rewardAmount || 0),
@@ -59,6 +70,7 @@ const get_referral_stats_from_db = async (userId: string) => {
     referralCode: account!.referralCode,
     totalReferrals,
     activeReferrals,
+    badge,
     totalRewards,
     walletBalance: account!.walletBalance,
     referralLink,
@@ -150,5 +162,6 @@ export const referral_services = {
   get_referral_history_from_db,
   complete_referral_in_db,
   generateReferralCode,
+  get_badge_by_referral_count,
 };
 
