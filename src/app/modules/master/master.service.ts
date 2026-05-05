@@ -59,6 +59,7 @@ const get_master_profile = async (accountId: string) => {
   return {
     ...master.toObject(),
     referralBadge,
+    badgeName: referralBadge,
   };
 };
 
@@ -142,10 +143,12 @@ const get_all_masters = async (
   const enrichedMasters = masters.map(master => {
     const masterObj = master.toObject();
     const accountId = master.accountId._id.toString();
+    const referralBadge = referralBadgeMap[accountId] || "Rookie";
     return {
       ...masterObj,
       isFollow: currentUserId ? followedMasterIds.has(master.accountId.toString()) : false,
-      referralBadge: referralBadgeMap[accountId] || "Rookie"
+      referralBadge,
+      badgeName: referralBadge
     };
   });
 
@@ -196,6 +199,7 @@ const get_master_by_id = async (masterId: string, currentUserId?: string) => {
     ...masterObj,
     isFollow,
     referralBadge,
+    badgeName: referralBadge,
   };
 };
 

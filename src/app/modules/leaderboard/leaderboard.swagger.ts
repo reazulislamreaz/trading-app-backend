@@ -26,7 +26,25 @@ export const leaderboardSwaggerDocs = {
                   data: {
                     type: 'object',
                     properties: {
-                      data: { type: 'array' },
+                      data: { 
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            _id: { type: 'string' },
+                            accountId: { type: 'object' },
+                            bio: { type: 'string' },
+                            specialties: { type: 'array', items: { type: 'string' } },
+                            winRate: { type: 'number' },
+                            avgPnl: { type: 'number' },
+                            followerCount: { type: 'integer' },
+                            totalSignals: { type: 'integer' },
+                            isFeatured: { type: 'boolean' },
+                            leaderboardScore: { type: 'number' },
+                            badgeName: { type: 'string', example: 'Gold' }
+                          }
+                        }
+                      },
                       topThree: { type: 'array', description: 'Top 3 highlighted traders' },
                       rest: { type: 'array', description: 'Remaining traders' },
                       stats: {
@@ -63,7 +81,38 @@ export const leaderboardSwaggerDocs = {
         },
       ],
       responses: {
-        200: { description: 'User rank retrieved successfully' },
+        200: { 
+          description: 'User rank retrieved successfully',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean' },
+                  message: { type: 'string' },
+                  data: {
+                    type: 'object',
+                    properties: {
+                      rank: { type: 'integer' },
+                      score: { type: 'number' },
+                      totalMasters: { type: 'integer' },
+                      masterProfile: {
+                        type: 'object',
+                        properties: {
+                          winRate: { type: 'number' },
+                          avgPnl: { type: 'number' },
+                          followerCount: { type: 'integer' },
+                          totalSignals: { type: 'integer' },
+                          badgeName: { type: 'string', example: 'Platinum' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         404: { description: 'Master profile not found or not approved' },
       },
     },

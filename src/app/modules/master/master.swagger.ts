@@ -42,6 +42,8 @@ export const masterSwaggerDocs = {
                         avgPnl: { type: "number", example: 3.2 },
                         followerCount: { type: "integer", example: 1240 },
                         isFeatured: { type: "boolean", example: true },
+                        referralBadge: { type: "string", example: "Gold" },
+                        badgeName: { type: "string", example: "Gold" },
                         createdAt: { type: "string", format: "date-time" },
                       },
                     },

@@ -35,7 +35,31 @@ export const topTradersSwaggerDocs = {
                   data: {
                     type: 'object',
                     properties: {
-                      data: { type: 'array' },
+                      data: { 
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            _id: { type: 'string' },
+                            accountId: { type: 'object' },
+                            name: { type: 'string' },
+                            userProfileUrl: { type: 'string' },
+                            bio: { type: 'string' },
+                            specialties: { type: 'array', items: { type: 'string' } },
+                            winRate: { type: 'number' },
+                            avgPnl: { type: 'number' },
+                            totalSignals: { type: 'integer' },
+                            winningSignals: { type: 'integer' },
+                            losingSignals: { type: 'integer' },
+                            followerCount: { type: 'integer' },
+                            isFeatured: { type: 'boolean' },
+                            isFollow: { type: 'boolean' },
+                            recentSignalsCount: { type: 'integer' },
+                            rank: { type: 'integer' },
+                            badgeName: { type: 'string', example: 'Gold' }
+                          }
+                        }
+                      },
                       meta: {
                         type: 'object',
                         properties: {

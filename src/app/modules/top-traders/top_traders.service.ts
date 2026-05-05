@@ -2,6 +2,8 @@ import { Master_Model } from '../master/master.schema';
 import { Signal_Model } from '../signal/signal.schema';
 import { Follow_Model } from '../follow/follow.schema';
 import { Types } from 'mongoose';
+import { referral_services } from '../referral/referral.service';
+import { Referral_Model } from '../referral/referral.schema';
 
 export type TimeframeType = 'week' | 'month' | 'all';
 export type SortByType = 'winRate' | 'avgPnl' | 'totalSignals' | 'followerCount';
@@ -71,6 +73,18 @@ const get_top_traders = async (
     followedMasterIds = new Set(follows.map(f => f.masterId.toString()));
   }
 
+  // Get referral badges for all masters in the list
+  const masterAccountIds = masters.map(m => m.accountId._id);
+  const referralCounts = await Referral_Model.aggregate([
+    { $match: { referrerId: { $in: masterAccountIds }, status: "COMPLETED" } },
+    { $group: { _id: "$referrerId", count: { $sum: 1 } } }
+  ]);
+
+  const referralBadgeMap: Record<string, string> = {};
+  referralCounts.forEach(rc => {
+    referralBadgeMap[rc._id.toString()] = referral_services.get_badge_by_referral_count(rc.count);
+  });
+
   // Enrich with recent signal performance for context
   const enrichedMasters = await Promise.all(
     masters.map(async (master) => {
@@ -80,6 +94,8 @@ const get_top_traders = async (
         status: 'closed',
         closedAt: { $gte: startDate },
       });
+
+      const accountId = master.accountId._id.toString();
 
       return {
         _id: master._id,
@@ -98,6 +114,7 @@ const get_top_traders = async (
         isFollow: currentUserId ? followedMasterIds.has(master.accountId.toString()) : false,
         recentSignalsCount,
         rank: skip + masters.indexOf(master) + 1,
+        badgeName: referralBadgeMap[accountId] || "Rookie"
       };
     })
   );
@@ -155,6 +172,13 @@ const get_trader_performance = async (accountId: string, currentUserId?: string)
     ? losingSignals.reduce((sum, s) => sum + (s.resultPnl || 0), 0) / losingSignals.length
     : 0;
 
+  // Get referral badge
+  const activeReferrals = await Referral_Model.countDocuments({
+    referrerId: new Types.ObjectId(accountId),
+    status: "COMPLETED",
+  });
+  const badgeName = referral_services.get_badge_by_referral_count(activeReferrals);
+
   return {
     profile: {
       _id: master._id,
@@ -164,6 +188,7 @@ const get_trader_performance = async (accountId: string, currentUserId?: string)
       bio: master.bio,
       specialties: master.specialties,
       isFollow,
+      badgeName,
     },
     performance: {
       winRate: master.winRate,
@@ -201,6 +226,18 @@ const compare_traders = async (accountId1: string, accountId2: string) => {
     return null;
   }
 
+  const activeReferrals1 = await Referral_Model.countDocuments({
+    referrerId: new Types.ObjectId(accountId1),
+    status: "COMPLETED",
+  });
+  const badgeName1 = referral_services.get_badge_by_referral_count(activeReferrals1);
+
+  const activeReferrals2 = await Referral_Model.countDocuments({
+    referrerId: new Types.ObjectId(accountId2),
+    status: "COMPLETED",
+  });
+  const badgeName2 = referral_services.get_badge_by_referral_count(activeReferrals2);
+
   return {
     trader1: {
       accountId: trader1.accountId,
@@ -212,6 +249,7 @@ const compare_traders = async (accountId1: string, accountId2: string) => {
       winningSignals: trader1.winningSignals,
       losingSignals: trader1.losingSignals,
       followerCount: trader1.followerCount,
+      badgeName: badgeName1,
     },
     trader2: {
       accountId: trader2.accountId,
@@ -223,6 +261,7 @@ const compare_traders = async (accountId1: string, accountId2: string) => {
       winningSignals: trader2.winningSignals,
       losingSignals: trader2.losingSignals,
       followerCount: trader2.followerCount,
+      badgeName: badgeName2,
     },
   };
 };

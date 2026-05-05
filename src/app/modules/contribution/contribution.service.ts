@@ -139,6 +139,7 @@ const get_top_contributors = async (
     return {
       ...item,
       contributionType: badgeMap[topActivity] || 'Contributor',
+      badgeName: badgeMap[topActivity] || 'Contributor',
     };
   };
 

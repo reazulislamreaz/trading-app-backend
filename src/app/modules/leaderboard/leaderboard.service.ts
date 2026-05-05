@@ -3,6 +3,8 @@ import { Signal_Model } from '../signal/signal.schema';
 import { AppError } from '../../utils/app_error';
 import httpStatus from 'http-status';
 import { Types } from 'mongoose';
+import { referral_services } from '../referral/referral.service';
+import { Referral_Model } from '../referral/referral.schema';
 
 export type TimeframeType = 'week' | 'month' | 'all';
 
@@ -121,6 +123,17 @@ const get_leaderboard = async (
   };
 
   // Calculate scores and enrich with rank
+  const masterAccountIds = masters.map(m => m.accountId._id);
+  const referralCounts = await Referral_Model.aggregate([
+    { $match: { referrerId: { $in: masterAccountIds }, status: "COMPLETED" } },
+    { $group: { _id: "$referrerId", count: { $sum: 1 } } }
+  ]);
+
+  const referralBadgeMap: Record<string, string> = {};
+  referralCounts.forEach(rc => {
+    referralBadgeMap[rc._id.toString()] = referral_services.get_badge_by_referral_count(rc.count);
+  });
+
   const scoredMasters = masters.map((master) => {
     const metrics: NormalizedMetrics = {
       winRate: master.winRate,
@@ -130,6 +143,7 @@ const get_leaderboard = async (
     };
 
     const score = normalizeMetrics(metrics, maxMetrics);
+    const accountId = master.accountId._id.toString();
 
     return {
       _id: master._id,
@@ -142,6 +156,7 @@ const get_leaderboard = async (
       totalSignals: master.totalSignals,
       isFeatured: master.isFeatured,
       leaderboardScore: Math.round(score * 10000) / 100, // 0-100 scale
+      badgeName: referralBadgeMap[accountId] || "Rookie"
     };
   });
 
@@ -223,6 +238,13 @@ const get_user_rank = async (accountId: string) => {
 
   const userScore = scoredMasters.find((m) => m.accountId === accountId);
 
+  // Get referral badge
+  const activeReferrals = await Referral_Model.countDocuments({
+    referrerId: new Types.ObjectId(accountId),
+    status: "COMPLETED",
+  });
+  const badgeName = referral_services.get_badge_by_referral_count(activeReferrals);
+
   return {
     rank,
     score: userScore ? Math.round(userScore.score * 10000) / 100 : 0,
@@ -232,6 +254,7 @@ const get_user_rank = async (accountId: string) => {
       avgPnl: master.avgPnl,
       followerCount: master.followerCount,
       totalSignals: master.totalSignals,
+      badgeName,
     },
   };
 };
