@@ -921,7 +921,7 @@ Required environment variables (25+ total):
 | POST | `/api/v1/auth/logout` | Yes | USER, ADMIN | Logout and revoke tokens |
 | POST | `/api/v1/auth/2fa/setup` | Yes | USER, ADMIN | Initiate 2FA setup |
 | GET | `/api/v1/auth/me` | Yes | USER, ADMIN | Get current user profile |
-| PATCH | `/api/v1/user/update-profile` | Yes | USER, ADMIN | Update profile |
+| PATCH | `/api/v1/user/update-profile` | Yes | USER, MASTER, ADMIN | Update profile (name, avatar, referral code [one-time only]) |
 | GET | `/api/v1/user` | Yes | ADMIN | List all users |
 | POST | `/api/v1/upload/file` | Yes | USER, ADMIN | Upload single file |
 | GET | `/api/v1/subscription/plans` | Yes | USER, ADMIN | Get subscription plans |

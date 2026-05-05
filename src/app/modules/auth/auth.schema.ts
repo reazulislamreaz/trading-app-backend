@@ -37,6 +37,7 @@ const authSchema = new Schema<TAccount>({
     loginAttempts: { type: Number, default: 0 },
     lockedUntil: { type: Date, select: false },
     referralCode: { type: String, unique: true },
+    referralCodeChanged: { type: Boolean, default: false },
     referredBy: { type: Schema.Types.ObjectId, ref: "account" },
     walletBalance: { type: Number, default: 0 }
 }, {

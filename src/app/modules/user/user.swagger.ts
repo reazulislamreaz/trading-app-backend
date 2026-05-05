@@ -24,6 +24,11 @@ export const userSwaggerDocs = {
                                     description: "URL of the profile image. Obtain this by first uploading an image to POST /api/v1/upload/file.",
                                     example: "https://your-bucket.s3.your-region.amazonaws.com/uploads/profile_abc123.jpg",
                                 },
+                                referralCode: {
+                                    type: "string",
+                                    description: "Unique referral code (3-20 chars, uppercase alphanumeric and underscores). Note: Can only be changed ONCE.",
+                                    example: "MY_TRADING_CODE_2024",
+                                },
                             },
                         },
                     },
@@ -45,6 +50,7 @@ export const userSwaggerDocs = {
                                             _id: { type: "string", example: "64b2e1b9d1234f0012ab5678" },
                                             name: { type: "string", example: "John Doe" },
                                             email: { type: "string", example: "john@example.com" },
+                                            referralCode: { type: "string", example: "MY_TRADING_CODE_2024" },
                                             userProfileUrl: {
                                                 type: "string",
                                                 example: "https://your-bucket.s3.your-region.amazonaws.com/uploads/profile_abc123.jpg",

@@ -68,6 +68,7 @@ const get_referral_stats_from_db = async (userId: string) => {
 
   return {
     referralCode: account!.referralCode,
+    referralCodeChanged: account!.referralCodeChanged || false,
     totalReferrals,
     activeReferrals,
     badge,

@@ -44,7 +44,7 @@ const create_or_update_master_profile = async (
  */
 const get_master_profile = async (accountId: string) => {
   const master = await Master_Model.findOne({ accountId })
-    .populate('accountId', 'name email userProfileUrl accountStatus');
+    .populate('accountId', 'name email userProfileUrl accountStatus referralCode referralCodeChanged');
 
   if (!master) {
     throw new AppError('Master profile not found', httpStatus.NOT_FOUND);

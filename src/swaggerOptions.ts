@@ -140,8 +140,9 @@ export const swaggerOptions = {
         ReferralStats: {
           type: "object",
           properties: {
-            referralCode: { type: "string", example: "REF123456" },
-            referralLink: { type: "string", example: "https://tradingapp.com/signup?ref=REF123456" },
+            referralCode: { type: "string", example: "MY_TRADING_CODE_2024" },
+            referralCodeChanged: { type: "boolean", example: false, description: "Whether the user has already changed their referral code once" },
+            referralLink: { type: "string", example: "https://tradingapp.com/signup?ref=MY_TRADING_CODE_2024" },
             totalReferrals: { type: "integer", example: 10 },
             activeReferrals: { type: "integer", example: 5 },
             badge: { type: "string", example: "Bronze" },

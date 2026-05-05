@@ -33,6 +33,7 @@ export type TAccount = {
   loginAttempts?: number;
   lockedUntil?: Date;
   referralCode?: string;
+  referralCodeChanged?: boolean;
   referredBy?: string;
   walletBalance: number;
 };

@@ -13,7 +13,7 @@ const DEFAULT_LIMIT = 10;
  * Whitelist-only fields that users can update on their own profile.
  * Prevents privilege escalation (role, isVerified, subscriptionTier, etc.)
  */
-const ALLOWED_PROFILE_FIELDS = ['name', 'userProfileUrl'];
+const ALLOWED_PROFILE_FIELDS = ['name', 'userProfileUrl', 'referralCode'];
 
 const update_profile_into_db = async (req: Request) => {
   const email = req?.user?.email;
@@ -30,6 +30,41 @@ const update_profile_into_db = async (req: Request) => {
     }
   }
 
+  if (Object.keys(updateData).length === 0) {
+    throw new AppError("No valid fields to update", httpStatus.BAD_REQUEST);
+  }
+
+  // If referralCode is being updated, check for uniqueness and one-time limit
+  if (updateData.referralCode) {
+    const user = await Account_Model.findOne({ email });
+    
+    if (!user) {
+      throw new AppError("User not found", httpStatus.NOT_FOUND);
+    }
+
+    // If the code is the same as current, ignore the update to prevent blocking same-value updates
+    if (updateData.referralCode === user.referralCode) {
+      delete updateData.referralCode;
+    } else {
+      if (user.referralCodeChanged) {
+        throw new AppError("Referral code can only be changed once", httpStatus.BAD_REQUEST);
+      }
+
+      const existingCode = await Account_Model.findOne({ 
+        referralCode: updateData.referralCode,
+        email: { $ne: email } 
+      });
+      
+      if (existingCode) {
+        throw new AppError("Referral code is already taken", httpStatus.CONFLICT);
+      }
+
+      // Set the flag for the update
+      updateData.referralCodeChanged = true;
+    }
+  }
+
+  // Check if there are still valid fields to update after potentially deleting referralCode
   if (Object.keys(updateData).length === 0) {
     throw new AppError("No valid fields to update", httpStatus.BAD_REQUEST);
   }
