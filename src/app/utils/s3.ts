@@ -5,6 +5,9 @@ import { configs } from "../configs";
 import logger from "../configs/logger";
 import { uploadToLocal } from "./local_storage";
 
+
+
+// this is test comment to trigger a new commit, please ignore
 // Check if AWS credentials are properly configured (not placeholder values)
 const isAwsConfigured = () => {
   const bucketName = configs.aws.bucket_name || "";
