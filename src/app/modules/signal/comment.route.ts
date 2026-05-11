@@ -25,7 +25,6 @@ router.post(
  */
 router.get(
   '/',
-  requestValidator(comment_validations.getCommentsSchema),
   comment_controllers.get_comments
 );
 

@@ -23,7 +23,8 @@ export const swaggerOptions = {
     info: {
       title: "Trading Signal Platform API",
       version: "1.0.0",
-      description: "Production-level SaaS trading signal platform. Users subscribe to the platform to access trading signals posted by approved Master Traders. All payments go to the Admin/Platform Stripe account.",
+      description:
+        "Production-level SaaS trading signal platform. Users subscribe to the platform to access trading signals posted by approved Master Traders. All payments go to the Admin/Platform Stripe account.",
     },
     paths: {
       ...commentSwaggerDocs,
@@ -46,15 +47,22 @@ export const swaggerOptions = {
     },
     servers:
       configs.env === "production"
-        ? [{ url: configs.jwt.front_end_url || "http://206.162.244.11:7777" }, { url: "https://reaz5000.syedbipul.me" }]
-        : [{ url: "https://reaz5000.syedbipul.me" }, { url: "http://206.162.244.11:7777" }],
+        ? [
+            { url: configs.jwt.front_end_url || "http://206.162.244.11:7777" },
+            { url: "http://localhost:5000" },
+          ]
+        : [
+            { url: "http://localhost:5000" },
+            { url: "http://206.162.244.11:7777" },
+          ],
     components: {
       securitySchemes: {
         bearerAuth: {
           type: "http",
           scheme: "bearer",
           bearerFormat: "JWT",
-          description: "Enter your JWT token. Example payload: { userId: '65f123...', email: 'user@example.com', role: 'USER' | 'ADMIN' | 'MASTER' }",
+          description:
+            "Enter your JWT token. Example payload: { userId: '65f123...', email: 'user@example.com', role: 'USER' | 'ADMIN' | 'MASTER' }",
         },
       },
       schemas: {
@@ -75,7 +83,11 @@ export const swaggerOptions = {
           properties: {
             userId: { type: "string", example: "65f1234567890abcdef12345" },
             email: { type: "string", example: "user@example.com" },
-            role: { type: "string", enum: ["USER", "ADMIN", "MASTER"], example: "USER" },
+            role: {
+              type: "string",
+              enum: ["USER", "ADMIN", "MASTER"],
+              example: "USER",
+            },
             iat: { type: "integer", example: 1712345678 },
             exp: { type: "integer", example: 1712346578 },
           },
@@ -112,7 +124,17 @@ export const swaggerOptions = {
         },
         NotificationType: {
           type: "string",
-          enum: ["new_signal", "subscription_active", "subscription_expiring", "subscription_canceled", "payment_succeeded", "payment_failed", "system_announcement", "signal_copied", "trade_result_logged"],
+          enum: [
+            "new_signal",
+            "subscription_active",
+            "subscription_expiring",
+            "subscription_canceled",
+            "payment_succeeded",
+            "payment_failed",
+            "system_announcement",
+            "signal_copied",
+            "trade_result_logged",
+          ],
           description: "Type of notification",
           example: "new_signal",
         },
@@ -143,8 +165,16 @@ export const swaggerOptions = {
           type: "object",
           properties: {
             referralCode: { type: "string", example: "MY_TRADING_CODE_2024" },
-            referralCodeChanged: { type: "boolean", example: false, description: "Whether the user has already changed their referral code once" },
-            referralLink: { type: "string", example: "https://tradingapp.com/signup?ref=MY_TRADING_CODE_2024" },
+            referralCodeChanged: {
+              type: "boolean",
+              example: false,
+              description:
+                "Whether the user has already changed their referral code once",
+            },
+            referralLink: {
+              type: "string",
+              example: "https://tradingapp.com/signup?ref=MY_TRADING_CODE_2024",
+            },
             totalReferrals: { type: "integer", example: 10 },
             activeReferrals: { type: "integer", example: 5 },
             badge: { type: "string", example: "Bronze" },
@@ -237,26 +267,81 @@ export const swaggerOptions = {
       },
     },
     tags: [
-      { name: "Comments", description: "Signal engagement through user comments" },
-      { name: "Authentication", description: "User registration, login, password management, and 2FA" },
-      { name: "Two-Factor Authentication", description: "TOTP-based two-factor authentication setup and management" },
-      { name: "Users", description: "User profile management and admin user operations" },
+      {
+        name: "Comments",
+        description: "Signal engagement through user comments",
+      },
+      {
+        name: "Authentication",
+        description: "User registration, login, password management, and 2FA",
+      },
+      {
+        name: "Two-Factor Authentication",
+        description:
+          "TOTP-based two-factor authentication setup and management",
+      },
+      {
+        name: "Users",
+        description: "User profile management and admin user operations",
+      },
       { name: "Upload", description: "File upload to S3/local storage" },
-      { name: "Subscriptions", description: "Platform subscription plans, checkout, and Stripe payment management" },
-      { name: "Signals", description: "Trading signal creation, management, and viewing" },
-      { name: "Masters", description: "Master Trader profiles and performance stats" },
-      { name: "Masters (Admin)", description: "Admin operations for featuring Master Traders" },
+      {
+        name: "Subscriptions",
+        description:
+          "Platform subscription plans, checkout, and Stripe payment management",
+      },
+      {
+        name: "Signals",
+        description: "Trading signal creation, management, and viewing",
+      },
+      {
+        name: "Masters",
+        description: "Master Trader profiles and performance stats",
+      },
+      {
+        name: "Masters (Admin)",
+        description: "Admin operations for featuring Master Traders",
+      },
       { name: "Follow", description: "Follow/unfollow Master Traders" },
       { name: "Notifications", description: "User notification management" },
-      { name: "Referrals", description: "User referral system - invite friends and earn rewards" },
-      { name: "Withdrawals", description: "User withdrawal requests and wallet management" },
-      { name: "Withdrawals (Admin)", description: "Admin operations for processing withdrawal requests" },
-      { name: "Transactions", description: "Wallet transaction history (rewards and withdrawals)" },
-      { name: "Contributions", description: "User engagement tracking and top contributor rankings" },
-      { name: "Leaderboard", description: "Overall platform leaderboard with composite scoring" },
-      { name: "Top Traders", description: "Top Master Traders ranked by trading performance" },
-      { name: "Copy Trades", description: "Copy trade intent tracking and trade journal for logging results" },
-      { name: "Admin", description: "Admin dashboard — analytics, broadcasts, role management, payment logs" },
+      {
+        name: "Referrals",
+        description: "User referral system - invite friends and earn rewards",
+      },
+      {
+        name: "Withdrawals",
+        description: "User withdrawal requests and wallet management",
+      },
+      {
+        name: "Withdrawals (Admin)",
+        description: "Admin operations for processing withdrawal requests",
+      },
+      {
+        name: "Transactions",
+        description: "Wallet transaction history (rewards and withdrawals)",
+      },
+      {
+        name: "Contributions",
+        description: "User engagement tracking and top contributor rankings",
+      },
+      {
+        name: "Leaderboard",
+        description: "Overall platform leaderboard with composite scoring",
+      },
+      {
+        name: "Top Traders",
+        description: "Top Master Traders ranked by trading performance",
+      },
+      {
+        name: "Copy Trades",
+        description:
+          "Copy trade intent tracking and trade journal for logging results",
+      },
+      {
+        name: "Admin",
+        description:
+          "Admin dashboard — analytics, broadcasts, role management, payment logs",
+      },
     ],
   },
   // Don't scan files - use manual swagger docs instead

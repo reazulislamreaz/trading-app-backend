@@ -46,6 +46,9 @@ export const signalSwaggerDocs = {
                         isFeatured: { type: "boolean", example: true },
                         viewCount: { type: "integer", example: 342 },
                         likeCount: { type: "integer", example: 28 },
+                        commentCount: { type: "integer", example: 12 },
+                        bookmarkCount: { type: "integer", example: 5 },
+                        copierCount: { type: "integer", example: 8 },
                         authorId: {
                           type: "object",
                           properties: {
