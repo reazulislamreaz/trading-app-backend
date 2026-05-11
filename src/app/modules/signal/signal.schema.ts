@@ -48,6 +48,7 @@ export interface ISignal {
   // Metadata
   tags: string[];
   externalChartUrl: string;
+  videoUrl: string;
 }
 
 const signalSchema = new Schema<ISignal>(
@@ -109,6 +110,7 @@ const signalSchema = new Schema<ISignal>(
     // Metadata
     tags: { type: [String], default: [] },
     externalChartUrl: { type: String, default: '' },
+    videoUrl: { type: String, default: '' },
   },
   {
     versionKey: false,

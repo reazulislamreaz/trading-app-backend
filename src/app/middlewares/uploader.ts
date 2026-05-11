@@ -12,6 +12,13 @@ const allowedTypes = [
   // CSV (IMPORTANT)
   "text/csv",
   "application/vnd.ms-excel",
+
+  // Video
+  "video/mp4",
+  "video/quicktime",
+  "video/x-msvideo",
+  "video/x-matroska",
+  "video/webm",
 ];
 
 // Mapping of MIME types to their expected file extensions
@@ -23,15 +30,20 @@ const allowedExtensions: Record<string, string[]> = {
   "application/pdf": [".pdf"],
   "text/csv": [".csv"],
   "application/vnd.ms-excel": [".csv"],
+  "video/mp4": [".mp4"],
+  "video/quicktime": [".mov"],
+  "video/x-msvideo": [".avi"],
+  "video/x-matroska": [".mkv"],
+  "video/webm": [".webm"],
 };
 
 export const uploader = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 },
+  limits: { fileSize: 100 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     // Check MIME type
     if (!allowedTypes.includes(file.mimetype)) {
-      return cb(new Error("Invalid file type. Allowed: JPG, PNG, WebP, PDF, CSV"));
+      return cb(new Error("Invalid file type. Allowed: JPG, PNG, WebP, PDF, CSV, MP4, MOV, AVI, MKV, WEBM"));
     }
 
     // Check file extension matches MIME type

@@ -4,7 +4,7 @@ export const uploadSwaggerDocs = {
       tags: ["Upload"],
       summary: "Upload a single file",
       description:
-        "Uploads a single file to S3 storage. Supports images (JPG, PNG, WebP), PDF, and CSV files. Maximum file size: 20MB. This is the central upload endpoint used by all modules for file uploads.",
+        "Uploads a single file to S3 storage. Supports images (JPG, PNG, WebP), PDF, CSV, and Video files (MP4, MOV, AVI, MKV, WEBM). Maximum file size: 100MB. This is the central upload endpoint used by all modules for file uploads.",
       security: [{ bearerAuth: [] }],
       requestBody: {
         required: true,
@@ -16,7 +16,7 @@ export const uploadSwaggerDocs = {
                 file: {
                   type: "string",
                   format: "binary",
-                  description: "The file to upload. Allowed types: JPG, PNG, WebP, PDF, CSV. Max size: 20MB.",
+                  description: "The file to upload. Allowed types: JPG, PNG, WebP, PDF, CSV, MP4, MOV, AVI, MKV, WEBM. Max size: 100MB.",
                 },
               },
               required: ["file"],
@@ -92,7 +92,7 @@ export const uploadSwaggerDocs = {
       tags: ["Upload"],
       summary: "Upload multiple files",
       description:
-        "Uploads multiple files (up to 10) to S3 storage. Supports images (JPG, PNG, WebP), PDF, and CSV files. Maximum file size per file: 20MB.",
+        "Uploads multiple files (up to 10) to S3 storage. Supports images (JPG, PNG, WebP), PDF, CSV, and Video files (MP4, MOV, AVI, MKV, WEBM). Maximum file size per file: 100MB.",
       security: [{ bearerAuth: [] }],
       requestBody: {
         required: true,
@@ -107,7 +107,7 @@ export const uploadSwaggerDocs = {
                     type: "string",
                     format: "binary",
                   },
-                  description: "Array of files to upload. Maximum 10 files. Allowed types: JPG, PNG, WebP, PDF, CSV. Max size per file: 20MB.",
+                  description: "Array of files to upload. Maximum 10 files. Allowed types: JPG, PNG, WebP, PDF, CSV, MP4, MOV, AVI, MKV, WEBM. Max size per file: 100MB.",
                   maxItems: 10,
                 },
               },

@@ -25,6 +25,7 @@ interface TCreateSignal {
   isPremium?: boolean;
   tags?: string[];
   externalChartUrl?: string;
+  videoUrl?: string;
   publishType?: 'instant' | 'scheduled';
   scheduledAt?: string;
 }
