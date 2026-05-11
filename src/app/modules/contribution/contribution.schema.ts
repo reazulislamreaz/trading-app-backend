@@ -6,6 +6,7 @@ export type ContributionActivityType =
   | 'bookmark_signal'
   | 'share_signal'
   | 'create_signal'
+  | 'comment'
   | 'close_signal_profit'
   | 'close_signal_loss';
 
@@ -15,6 +16,7 @@ export const CONTRIBUTION_POINTS: Record<ContributionActivityType, number> = {
   bookmark_signal: 3,
   share_signal: 5,
   create_signal: 10,
+  comment: 5,
   close_signal_profit: 15,
   close_signal_loss: 5,
 };

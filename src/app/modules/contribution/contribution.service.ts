@@ -130,6 +130,7 @@ const get_top_contributors = async (
     const badgeMap: Record<string, string> = {
       like_signal: 'Engaged',
       view_signal: 'Engaged',
+      comment: 'Communicator',
       share_signal: 'Top Sharer',
       create_signal: 'Top Creator',
       close_signal_profit: 'Top Trader',

@@ -4,6 +4,7 @@ import { userSwaggerDocs } from "./app/modules/user/user.swagger";
 import { uploadSwaggerDocs } from "./app/modules/upload.ts/upload.swagger";
 import { subscriptionSwaggerDocs } from "./app/modules/subscription/subscription.swagger";
 import { signalSwaggerDocs } from "./app/modules/signal/signal.swagger";
+import { commentSwaggerDocs } from "./app/modules/signal/comment.swagger";
 import { masterSwaggerDocs } from "./app/modules/master/master.swagger";
 import { followSwaggerDocs } from "./app/modules/follow/follow.swagger";
 import { notificationSwaggerDocs } from "./app/modules/notification/notification.swagger";
@@ -25,6 +26,7 @@ export const swaggerOptions = {
       description: "Production-level SaaS trading signal platform. Users subscribe to the platform to access trading signals posted by approved Master Traders. All payments go to the Admin/Platform Stripe account.",
     },
     paths: {
+      ...commentSwaggerDocs,
       ...authSwaggerDocs,
       ...userSwaggerDocs,
       ...uploadSwaggerDocs,
@@ -235,6 +237,7 @@ export const swaggerOptions = {
       },
     },
     tags: [
+      { name: "Comments", description: "Signal engagement through user comments" },
       { name: "Authentication", description: "User registration, login, password management, and 2FA" },
       { name: "Two-Factor Authentication", description: "TOTP-based two-factor authentication setup and management" },
       { name: "Users", description: "User profile management and admin user operations" },

@@ -4,6 +4,7 @@ import userRoute from './app/modules/user/user.route';
 import uploadRoute from './app/modules/upload.ts/upload.route';
 import subscriptionRoute from './app/modules/subscription/subscription.route';
 import signalRouter from './app/modules/signal/signal.route';
+import { comment_routes } from './app/modules/signal/comment.route';
 import masterRouter from './app/modules/master/master.route';
 import followRouter from './app/modules/follow/follow.route';
 import notificationRouter from './app/modules/notification/notification.route';
@@ -31,6 +32,7 @@ const moduleRoutes = [
 
     // Signal platform modules
     { path: '/signals', route: signalRouter },
+    { path: '/comments', route: comment_routes },
     { path: '/masters', route: masterRouter },
     { path: '/follow', route: followRouter },
     { path: '/notifications', route: notificationRouter },
