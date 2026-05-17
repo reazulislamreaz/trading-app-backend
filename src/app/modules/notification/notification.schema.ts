@@ -10,7 +10,11 @@ export type NotificationType =
   | 'system_announcement'
   | 'signal_copied'
   | 'trade_result_logged'
-  | 'badge_earned';
+  | 'badge_earned'
+  | 'training_completed'
+  | 'trading_unlocked'
+  | 'signal_ai_reviewed'
+  | 'signal_mt_pending';
 
 export interface INotification {
   accountId: Types.ObjectId;
@@ -38,6 +42,10 @@ const notificationSchema = new Schema<INotification>(
         'signal_copied',
         'trade_result_logged',
         'badge_earned',
+        'training_completed',
+        'trading_unlocked',
+        'signal_ai_reviewed',
+        'signal_mt_pending',
       ],
       required: true,
     },

@@ -36,6 +36,10 @@ export type TAccount = {
   referralCodeChanged?: boolean;
   referredBy?: string;
   walletBalance: number;
+
+  // Training & trading access
+  trainingCompletedAt?: Date | null;
+  tradingUnlocked?: boolean;
 };
 
 export interface TRegisterPayload {

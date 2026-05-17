@@ -1,6 +1,7 @@
 export type BadgeRole = 'USER' | 'MASTER';
 
 export type BadgeKey =
+  | 'training_complete'
   | 'first_signal'
   | 'hot_streak'
   | 'elitist'
@@ -23,6 +24,15 @@ export interface BadgeDefinition {
 
 /** All achievement badges from the product design (9 unique; duplicate Perfect week merged). */
 export const BADGE_DEFINITIONS: BadgeDefinition[] = [
+  {
+    key: 'training_complete',
+    name: 'Training Graduate',
+    description: 'Complete platform training to unlock trading',
+    iconKey: 'training_complete',
+    role: 'USER',
+    category: 'training',
+    sortOrder: 0,
+  },
   {
     key: 'top_trader',
     name: 'Top Trader',

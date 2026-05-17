@@ -63,7 +63,12 @@ const get_all_signals = catchAsync(async (req, res) => {
 });
 
 const get_single_signal = catchAsync(async (req, res) => {
-  const result = await signal_services.get_signal_by_id(req.params.id as string);
+  const viewerAccountId = req.user?.userId;
+  const result = await signal_services.get_signal_by_id(
+    req.params.id as string,
+    false,
+    viewerAccountId
+  );
 
   manageResponse(res, {
     success: true,
@@ -164,6 +169,76 @@ const share_signal = catchAsync(async (req, res) => {
   });
 });
 
+const get_review_queue = catchAsync(async (req, res) => {
+  const accountId = req.user!.userId;
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+  const result = await signal_services.get_review_queue(accountId, page, limit);
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Review queue retrieved',
+    data: result.data,
+    meta: result.meta,
+  });
+});
+
+const confirm_signal = catchAsync(async (req, res) => {
+  const accountId = req.user!.userId;
+  const result = await signal_services.confirm_signal(accountId, req.params.id as string);
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Signal confirmed and published',
+    data: result,
+  });
+});
+
+const reject_signal = catchAsync(async (req, res) => {
+  const accountId = req.user!.userId;
+  const result = await signal_services.reject_signal(
+    accountId,
+    req.params.id as string,
+    req.body.rejectionReason
+  );
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Signal rejected',
+    data: result,
+  });
+});
+
+const resubmit_ai_validation = catchAsync(async (req, res) => {
+  const accountId = req.user!.userId;
+  const result = await signal_services.resubmit_ai_validation(
+    accountId,
+    req.params.id as string
+  );
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Signal resubmitted for AI validation',
+    data: result,
+  });
+});
+
+const ai_assist_signal = catchAsync(async (req, res) => {
+  const accountId = req.user!.userId;
+  const result = await signal_services.ai_assist_signal(accountId, req.params.id as string);
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'AI assist generated',
+    data: result,
+  });
+});
+
 export const signal_controllers = {
   create_signal,
   update_signal,
@@ -171,6 +246,11 @@ export const signal_controllers = {
   get_all_signals,
   get_single_signal,
   get_my_signals,
+  get_review_queue,
+  confirm_signal,
+  reject_signal,
+  resubmit_ai_validation,
+  ai_assist_signal,
   toggle_featured,
   like_signal,
   unlike_signal,

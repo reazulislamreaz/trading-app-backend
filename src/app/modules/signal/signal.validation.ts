@@ -88,9 +88,14 @@ export const signalQuerySchema = z.object({
   publishType: z.enum(['instant', 'scheduled']).optional(),
 });
 
+export const rejectSignalSchema = z.object({
+  rejectionReason: z.string().max(500).optional(),
+});
+
 export const signal_validations = {
   createSignalSchema,
   updateSignalSchema,
   closeSignalSchema,
   signalQuerySchema,
+  rejectSignalSchema,
 };

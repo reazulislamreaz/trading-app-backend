@@ -70,8 +70,8 @@ app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
-// Trust proxy for correct client IP behind reverse proxy (Nginx, etc.)
-app.set("trust proxy", true);
+// Trust first proxy hop only (Nginx) — avoids permissive trust-proxy rate-limit warnings
+app.set("trust proxy", 1);
 
 app.use("/api/v1", appRouter);
 

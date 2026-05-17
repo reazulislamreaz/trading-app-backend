@@ -39,7 +39,10 @@ const authSchema = new Schema<TAccount>({
     referralCode: { type: String, unique: true },
     referralCodeChanged: { type: Boolean, default: false },
     referredBy: { type: Schema.Types.ObjectId, ref: "account" },
-    walletBalance: { type: Number, default: 0 }
+    walletBalance: { type: Number, default: 0 },
+
+    trainingCompletedAt: { type: Date, default: null },
+    tradingUnlocked: { type: Boolean, default: false },
 }, {
     versionKey: false,
     timestamps: true

@@ -92,4 +92,14 @@ export const configs = {
         webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
         frontend_url: process.env.STRIPE_FRONTEND_URL || 'http://localhost:3000',
     },
+    /** Groq (OpenAI-compatible) — used for signal validation & MT assist */
+    ai: {
+        apiKey: process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY || '',
+        baseUrl: process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1',
+        model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+        timeoutMs: Number(process.env.GROQ_TIMEOUT_MS || process.env.OPENAI_TIMEOUT_MS) || 15000,
+    },
+    features: {
+        signalAiWorkflow: process.env.SIGNAL_AI_WORKFLOW_ENABLED === 'true',
+    },
 };

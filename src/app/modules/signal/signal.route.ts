@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { signal_controllers } from './signal.controller';
 import { signal_validations } from './signal.validation';
-import auth from '../../middlewares/auth';
+import auth, { optionalAuth } from '../../middlewares/auth';
 import RequestValidator from '../../middlewares/request_validator';
+import { aiLimiter } from '../../middlewares/rate_limiter';
 
 const signalRouter = Router();
 
@@ -11,15 +12,41 @@ signalRouter.get('/', signal_controllers.get_all_signals);
 
 // Master-only routes (defined before parameterized /:id)
 signalRouter.get('/my/signals', auth('MASTER'), signal_controllers.get_my_signals);
+signalRouter.get('/review-queue', auth('MASTER'), signal_controllers.get_review_queue);
 signalRouter.post(
   '/',
   auth('MASTER'),
+  aiLimiter,
   RequestValidator(signal_validations.createSignalSchema),
   signal_controllers.create_signal,
 );
 
+signalRouter.post(
+  '/:id/confirm',
+  auth('MASTER'),
+  signal_controllers.confirm_signal,
+);
+signalRouter.post(
+  '/:id/reject',
+  auth('MASTER'),
+  RequestValidator(signal_validations.rejectSignalSchema),
+  signal_controllers.reject_signal,
+);
+signalRouter.post(
+  '/:id/resubmit-ai',
+  auth('MASTER'),
+  aiLimiter,
+  signal_controllers.resubmit_ai_validation,
+);
+signalRouter.post(
+  '/:id/ai-assist',
+  auth('MASTER'),
+  aiLimiter,
+  signal_controllers.ai_assist_signal,
+);
+
 // Parameterized routes
-signalRouter.get('/:id', signal_controllers.get_single_signal);
+signalRouter.get('/:id', optionalAuth, signal_controllers.get_single_signal);
 signalRouter.patch(
   '/:id',
   auth('MASTER'),

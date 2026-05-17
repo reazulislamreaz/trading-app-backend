@@ -28,23 +28,24 @@ process.env.STRIPE_SECRET_KEY = 'sk_test_dummy_key_for_testing_12345678';
 process.env.STRIPE_PUBLISHABLE_KEY = 'pk_test_dummy_key_for_testing_12345678';
 process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test_webhook_secret_12345678';
 
-// Connect to test database before all tests
+// Optional DB for integration tests only (set JEST_INTEGRATION=true)
 beforeAll(async () => {
+  if (process.env.JEST_INTEGRATION !== 'true') return;
   try {
-    await mongoose.connect(process.env.DB_URL as string);
-    console.log('Connected to test database');
-  } catch (error) {
-    console.warn('Could not connect to test database:', error);
+    await mongoose.connect(process.env.DB_URL as string, {
+      serverSelectionTimeoutMS: 3000,
+    });
+  } catch {
+    // Integration tests require MongoDB; unit tests skip connection
   }
 });
 
-// Disconnect from test database after all tests
 afterAll(async () => {
+  if (process.env.JEST_INTEGRATION !== 'true') return;
   try {
     await mongoose.disconnect();
-    console.log('Disconnected from test database');
-  } catch (error) {
-    console.warn('Error disconnecting from test database:', error);
+  } catch {
+    // ignore
   }
 });
 

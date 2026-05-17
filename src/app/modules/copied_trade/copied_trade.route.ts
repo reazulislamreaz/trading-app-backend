@@ -3,6 +3,7 @@ import { copied_trade_controllers } from './copied_trade.controller';
 import auth from '../../middlewares/auth';
 import RequestValidator from '../../middlewares/request_validator';
 import { copied_trade_validations } from './copied_trade.validation';
+import requireTradingAccess from '../../middlewares/require_trading_access';
 
 const copiedTradeRouter = Router();
 
@@ -18,12 +19,14 @@ copiedTradeRouter.use(auth('USER', 'MASTER', 'ADMIN'));
 // Copy a signal
 copiedTradeRouter.post(
   '/signals/:signalId/copy',
+  requireTradingAccess,
   copied_trade_controllers.copy_signal
 );
 
 // Log trade result
 copiedTradeRouter.post(
   '/log',
+  requireTradingAccess,
   RequestValidator(copied_trade_validations.logTradeSchema),
   copied_trade_controllers.log_trade
 );

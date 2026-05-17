@@ -308,4 +308,67 @@ export const signalSwaggerDocs = {
       },
     },
   },
+
+  "/api/v1/signals/review-queue": {
+    get: {
+      tags: ["Signals", "AI Workflow"],
+      summary: "Get MT review queue",
+      description: "Signals awaiting Master confirmation after AI validation.",
+      security: [{ bearerAuth: [] }],
+      responses: { 200: { description: "Review queue" } },
+    },
+  },
+  "/api/v1/signals/{id}/confirm": {
+    post: {
+      tags: ["Signals", "AI Workflow"],
+      summary: "Confirm and publish signal",
+      security: [{ bearerAuth: [] }],
+      parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+      responses: { 200: { description: "Signal published" } },
+    },
+  },
+  "/api/v1/signals/{id}/reject": {
+    post: {
+      tags: ["Signals", "AI Workflow"],
+      summary: "Reject signal",
+      description:
+        "Master rejects their own signal before publish (draft / ai_failed / mt_pending). Body optional. Cannot reject active or already-rejected signals.",
+      security: [{ bearerAuth: [] }],
+      parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+      requestBody: {
+        required: false,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              properties: {
+                rejectionReason: { type: "string", maxLength: 500 },
+              },
+            },
+          },
+        },
+      },
+      responses: { 200: { description: "Signal rejected" } },
+    },
+  },
+  "/api/v1/signals/{id}/resubmit-ai": {
+    post: {
+      tags: ["Signals", "AI Workflow"],
+      summary: "Resubmit signal for AI validation",
+      description:
+        "Re-runs Groq validation. Allowed when workflowStatus is draft, ai_pending, ai_failed, or mt_pending (e.g. after editing levels).",
+      security: [{ bearerAuth: [] }],
+      parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+      responses: { 200: { description: "AI validation rerun" } },
+    },
+  },
+  "/api/v1/signals/{id}/ai-assist": {
+    post: {
+      tags: ["Signals", "AI Workflow"],
+      summary: "Get AI setup assistance for draft signal",
+      security: [{ bearerAuth: [] }],
+      parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+      responses: { 200: { description: "AI assist result" } },
+    },
+  },
 };

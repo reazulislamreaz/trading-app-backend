@@ -235,6 +235,13 @@ const checkElitist = async (accountId: string): Promise<boolean> => {
   );
 };
 
+const checkTrainingComplete = async (userId: string): Promise<boolean> => {
+  const account = await Account_Model.findById(userId).select(
+    'tradingUnlocked trainingCompletedAt'
+  );
+  return Boolean(account?.tradingUnlocked || account?.trainingCompletedAt);
+};
+
 const evaluateUserBadgeKeys = async (
   userId: string,
   earnedKeys: Set<string>
@@ -243,6 +250,7 @@ const evaluateUserBadgeKeys = async (
   const stats = await getTradeStats(userId);
 
   const checks: { key: BadgeKey; met: boolean }[] = [
+    { key: 'training_complete', met: await checkTrainingComplete(userId) },
     { key: 'first_signal', met: stats.completedTrades >= 1 },
     { key: 'signal_maestro', met: stats.completedTrades >= BADGE_THRESHOLDS.signalMaestroTrades },
     {

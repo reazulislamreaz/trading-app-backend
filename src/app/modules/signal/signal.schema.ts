@@ -6,6 +6,33 @@ export type AssetType = 'forex' | 'crypto' | 'stocks' | 'indices' | 'commodities
 export type Timeframe = 'm1' | 'm5' | 'm15' | 'm30' | 'h1' | 'h4' | 'd1' | 'w1' | 'mn1';
 export type PublishType = 'instant' | 'scheduled';
 
+export type WorkflowStatus =
+  | 'draft'
+  | 'ai_pending'
+  | 'ai_passed'
+  | 'ai_failed'
+  | 'mt_pending'
+  | 'active'
+  | 'rejected';
+
+export interface IAiValidation {
+  status: 'pass' | 'fail' | 'review';
+  score: number;
+  summary: string;
+  risks: string[];
+  suggestedEdits?: string[];
+  validatedAt: Date;
+  model: string;
+  rawResponse?: string;
+}
+
+export interface IMtReview {
+  confirmedAt: Date | null;
+  confirmedBy: Types.ObjectId | null;
+  rejectedAt?: Date | null;
+  rejectionReason?: string;
+}
+
 export interface ISignal {
   authorId: Types.ObjectId;
   title: string;
@@ -49,6 +76,11 @@ export interface ISignal {
   tags: string[];
   externalChartUrl: string;
   videoUrl: string;
+
+  // AI-assisted workflow
+  workflowStatus: WorkflowStatus;
+  aiValidation: IAiValidation | null;
+  mtReview: IMtReview | null;
 }
 
 const signalSchema = new Schema<ISignal>(
@@ -111,6 +143,14 @@ const signalSchema = new Schema<ISignal>(
     tags: { type: [String], default: [] },
     externalChartUrl: { type: String, default: '' },
     videoUrl: { type: String, default: '' },
+
+    workflowStatus: {
+      type: String,
+      enum: ['draft', 'ai_pending', 'ai_passed', 'ai_failed', 'mt_pending', 'active', 'rejected'],
+      default: 'active',
+    },
+    aiValidation: { type: Schema.Types.Mixed, default: null },
+    mtReview: { type: Schema.Types.Mixed, default: null },
   },
   {
     versionKey: false,
@@ -129,5 +169,7 @@ signalSchema.index({ createdAt: -1 });
 signalSchema.index({ status: 1, publishedAt: -1 });
 signalSchema.index({ status: 1, scheduledAt: 1 });
 signalSchema.index({ copierCount: -1 });
+signalSchema.index({ workflowStatus: 1, authorId: 1 });
+signalSchema.index({ authorId: 1, workflowStatus: 1, createdAt: -1 });
 
 export const Signal_Model = model<ISignal>('signal', signalSchema);

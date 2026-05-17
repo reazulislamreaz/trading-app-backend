@@ -1,13 +1,23 @@
 import { AppError } from '../../utils/app_error';
 import httpStatus from 'http-status';
-import { Signal_Model, SignalStatus } from './signal.schema';
+import { Signal_Model, SignalStatus, ISignal, WorkflowStatus } from './signal.schema';
 import { Master_Model } from '../master/master.schema';
 import { Account_Model } from '../auth/auth.schema';
 import { Types } from 'mongoose';
 import { contribution_services } from '../contribution/contribution.service';
 import { notification_services } from '../notification/notification.service';
 import { follow_services } from '../follow/follow.service';
+import { ai_services } from '../ai/ai.service';
+import { SignalValidationInput } from '../ai/ai.interface';
+import { audit_services } from '../audit/audit.service';
+import { AuditAction } from '../audit/audit.schema';
+import { configs } from '../../configs';
 import logger from '../../configs/logger';
+import {
+  CONFIRMABLE_WORKFLOW_STATUSES,
+  REJECTABLE_WORKFLOW_STATUSES,
+  RESUBMIT_AI_WORKFLOW_STATUSES,
+} from './signal.workflow.constants';
 
 interface TCreateSignal {
   title: string;
@@ -44,12 +54,149 @@ interface TSignalFilters {
   authorId?: string;
 }
 
+const assertMasterApproved = async (accountId: string) => {
+  const master = await Master_Model.findOne({ accountId: new Types.ObjectId(accountId) });
+  if (!master) {
+    throw new AppError('Master profile not found', httpStatus.NOT_FOUND);
+  }
+  if (!master.isApproved) {
+    throw new AppError(
+      'Your Master Trader account is not approved yet. Contact admin.',
+      httpStatus.FORBIDDEN
+    );
+  }
+  return master;
+};
+
+const safeAudit = async (
+  action: AuditAction,
+  actorId: string,
+  targetType: string,
+  targetId: string,
+  metadata: Record<string, unknown> = {}
+) => {
+  try {
+    await audit_services.log(action, actorId, targetType, targetId, metadata);
+  } catch (err) {
+    logger.warn(`Audit log failed (${action})`, { targetId, err });
+  }
+};
+
+const signalToValidationInput = (signal: ISignal): SignalValidationInput => ({
+  title: signal.title,
+  description: signal.description,
+  assetType: signal.assetType,
+  symbol: signal.symbol,
+  signalType: signal.signalType,
+  timeframe: signal.timeframe,
+  entryPrice: signal.entryPrice,
+  stopLoss: signal.stopLoss,
+  takeProfit1: signal.takeProfit1,
+  takeProfit2: signal.takeProfit2,
+  takeProfit3: signal.takeProfit3,
+  entryNotes: signal.entryNotes,
+});
+
+const runAiValidationForSignal = async (signalId: string, actorId: string) => {
+  const signal = await Signal_Model.findById(signalId);
+  if (!signal) {
+    throw new AppError('Signal not found', httpStatus.NOT_FOUND);
+  }
+
+  const validation = await ai_services.validate_signal(signalToValidationInput(signal));
+
+  const workflowStatus: WorkflowStatus =
+    validation.status === 'fail' ? 'ai_failed' : 'mt_pending';
+
+  const updated = await Signal_Model.findByIdAndUpdate(
+    signalId,
+    {
+      workflowStatus,
+      status: 'draft',
+      aiValidation: {
+        status: validation.status,
+        score: validation.score,
+        summary: validation.summary,
+        risks: validation.risks,
+        suggestedEdits: validation.suggestedEdits,
+        validatedAt: new Date(),
+        model: validation.model,
+        rawResponse: validation.rawResponse,
+      },
+    },
+    { new: true }
+  );
+
+  await safeAudit('signal_ai_validated', actorId, 'signal', signalId, {
+    status: validation.status,
+    score: validation.score,
+  });
+
+  try {
+    await notification_services.create_notification({
+      accountId: actorId,
+      type: validation.status === 'fail' ? 'signal_ai_reviewed' : 'signal_mt_pending',
+      title:
+        validation.status === 'fail'
+          ? 'Signal needs revision'
+          : 'Signal ready for your review',
+      message: validation.summary,
+      link: `/signals/${signalId}/review`,
+      data: { signalId, aiStatus: validation.status },
+    });
+  } catch (err) {
+    logger.warn('AI validation notification failed', { signalId, err });
+  }
+
+  return updated;
+};
+
+const publishApprovedSignal = async (
+  signal: ISignal & { _id: Types.ObjectId },
+  accountId: string
+) => {
+  const signalId = signal._id.toString();
+  const publishType = signal.publishType || 'instant';
+  const now = new Date();
+  let status: SignalStatus = 'active';
+  let publishedAt: Date | null = now;
+
+  if (publishType === 'scheduled' && signal.scheduledAt && signal.scheduledAt > now) {
+    status = 'scheduled';
+    publishedAt = null;
+  }
+
+  const updated = await Signal_Model.findByIdAndUpdate(
+    signalId,
+    {
+      status,
+      workflowStatus: 'active',
+      publishedAt,
+      mtReview: {
+        confirmedAt: now,
+        confirmedBy: new Types.ObjectId(accountId),
+        rejectedAt: null,
+        rejectionReason: '',
+      },
+    },
+    { new: true }
+  );
+
+  if (status === 'active') {
+    await Master_Model.findOneAndUpdate({ accountId }, { $inc: { totalSignals: 1 } });
+    contribution_services.track_contribution(accountId, 'create_signal', signalId);
+    await notifyFollowersOfNewSignal(signalId, accountId);
+  }
+
+  return updated;
+};
+
 /**
  * Create a new signal (Master only)
  * Supports instant publish (default) and scheduled publish
+ * When SIGNAL_AI_WORKFLOW_ENABLED=true: draft → AI → MT confirm → publish
  */
 const create_signal = async (accountId: string, data: TCreateSignal) => {
-  // Verify user is a Master
   const account = await Account_Model.findById(accountId);
   if (!account) {
     throw new AppError('Account not found', httpStatus.NOT_FOUND);
@@ -59,25 +206,53 @@ const create_signal = async (accountId: string, data: TCreateSignal) => {
     throw new AppError('Only Master Traders can create signals', httpStatus.FORBIDDEN);
   }
 
-  // Determine publish type and status
+  await assertMasterApproved(accountId);
+
   const publishType = data.publishType || 'instant';
-  let status: SignalStatus = 'active';
   let scheduledAt: Date | null = null;
-  let publishedAt: Date | null = null;
 
   if (publishType === 'scheduled') {
     if (!data.scheduledAt) {
       throw new AppError('scheduledAt is required when publishType is scheduled', httpStatus.BAD_REQUEST);
     }
-
     scheduledAt = new Date(data.scheduledAt);
     if (isNaN(scheduledAt.getTime())) {
       throw new AppError('Invalid scheduledAt date format', httpStatus.BAD_REQUEST);
     }
+  }
 
+  if (configs.features.signalAiWorkflow) {
+    const signal = await Signal_Model.create({
+      ...data,
+      authorId: new Types.ObjectId(accountId),
+      status: 'draft',
+      workflowStatus: 'ai_pending',
+      publishType,
+      scheduledAt,
+      publishedAt: null,
+      stopLoss: data.stopLoss ?? null,
+      takeProfit1: data.takeProfit1 ?? null,
+      takeProfit2: data.takeProfit2 ?? null,
+      takeProfit3: data.takeProfit3 ?? null,
+      aiValidation: null,
+      mtReview: null,
+    });
+
+    const signalId = signal._id.toString();
+    try {
+      return await runAiValidationForSignal(signalId, accountId);
+    } catch (err) {
+      await Signal_Model.findByIdAndUpdate(signalId, { workflowStatus: 'draft' });
+      throw err;
+    }
+  }
+
+  let status: SignalStatus = 'active';
+  let publishedAt: Date | null = null;
+
+  if (publishType === 'scheduled') {
     status = 'scheduled';
   } else {
-    // Instant publish - set publishedAt to now
     publishedAt = new Date();
   }
 
@@ -85,6 +260,7 @@ const create_signal = async (accountId: string, data: TCreateSignal) => {
     ...data,
     authorId: new Types.ObjectId(accountId),
     status,
+    workflowStatus: 'active',
     publishType,
     scheduledAt,
     publishedAt,
@@ -94,17 +270,9 @@ const create_signal = async (accountId: string, data: TCreateSignal) => {
     takeProfit3: data.takeProfit3 ?? null,
   });
 
-  // Update master stats only for instantly published signals
   if (publishType === 'instant') {
-    await Master_Model.findOneAndUpdate(
-      { accountId },
-      { $inc: { totalSignals: 1 } }
-    );
-
-    // Track contribution for signal creation
+    await Master_Model.findOneAndUpdate({ accountId }, { $inc: { totalSignals: 1 } });
     contribution_services.track_contribution(accountId, 'create_signal', signal._id.toString());
-
-    // Notify followers about the new signal
     await notifyFollowersOfNewSignal(signal._id.toString(), accountId);
   }
 
@@ -237,18 +405,190 @@ const update_signal = async (
     return updated;
   }
 
-  // Regular update (not closing)
-  if (signal.status !== 'active' && signal.status !== 'scheduled') {
-    throw new AppError('Cannot update closed, expired or canceled signals', httpStatus.BAD_REQUEST);
+  const editableStatuses = ['active', 'scheduled', 'draft'];
+  const editableWorkflow = ['ai_failed', 'draft', 'mt_pending', 'ai_passed'];
+  const canEditWorkflow =
+    !signal.workflowStatus ||
+    signal.workflowStatus === 'active' ||
+    editableWorkflow.includes(signal.workflowStatus);
+
+  if (!editableStatuses.includes(signal.status) && signal.status !== 'draft') {
+    if (!canEditWorkflow) {
+      throw new AppError('Cannot update closed, expired or canceled signals', httpStatus.BAD_REQUEST);
+    }
   }
 
   const updated = await Signal_Model.findByIdAndUpdate(
     signalId,
-    { $set: { ...data, status: finalStatus, resultPnl: finalResultPnl } },
+    { $set: { ...data, status: finalStatus ?? signal.status, resultPnl: finalResultPnl } },
     { new: true }
   );
 
   return updated;
+};
+
+const get_review_queue = async (accountId: string, page = 1, limit = 20) => {
+  await assertMasterApproved(accountId);
+
+  const skip = (page - 1) * limit;
+  const query = {
+    authorId: new Types.ObjectId(accountId),
+    workflowStatus: { $in: ['mt_pending', 'ai_failed', 'ai_passed'] as WorkflowStatus[] },
+  };
+
+  const [data, total] = await Promise.all([
+    Signal_Model.find(query).sort({ updatedAt: -1 }).skip(skip).limit(limit),
+    Signal_Model.countDocuments(query),
+  ]);
+
+  return {
+    data,
+    meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+  };
+};
+
+const confirm_signal = async (accountId: string, signalId: string) => {
+  if (!Types.ObjectId.isValid(signalId)) {
+    throw new AppError('Invalid signal ID', httpStatus.BAD_REQUEST);
+  }
+
+  await assertMasterApproved(accountId);
+
+  const signal = await Signal_Model.findById(signalId);
+  if (!signal) {
+    throw new AppError('Signal not found', httpStatus.NOT_FOUND);
+  }
+
+  if (signal.authorId.toString() !== accountId) {
+    throw new AppError('You can only confirm your own signals', httpStatus.FORBIDDEN);
+  }
+
+  if (
+    !signal.workflowStatus ||
+    !CONFIRMABLE_WORKFLOW_STATUSES.includes(signal.workflowStatus)
+  ) {
+    throw new AppError(
+      'Signal is not awaiting Master confirmation',
+      httpStatus.BAD_REQUEST
+    );
+  }
+
+  const published = await publishApprovedSignal(signal, accountId);
+
+  await safeAudit('signal_mt_confirmed', accountId, 'signal', signalId, {
+    publishType: signal.publishType,
+  });
+
+  return published;
+};
+
+const reject_signal = async (
+  accountId: string,
+  signalId: string,
+  rejectionReason?: string
+) => {
+  if (!Types.ObjectId.isValid(signalId)) {
+    throw new AppError('Invalid signal ID', httpStatus.BAD_REQUEST);
+  }
+
+  await assertMasterApproved(accountId);
+
+  const signal = await Signal_Model.findById(signalId);
+  if (!signal) {
+    throw new AppError('Signal not found', httpStatus.NOT_FOUND);
+  }
+
+  if (signal.authorId.toString() !== accountId) {
+    throw new AppError('You can only reject your own signals', httpStatus.FORBIDDEN);
+  }
+
+  if (
+    !signal.workflowStatus ||
+    !REJECTABLE_WORKFLOW_STATUSES.includes(signal.workflowStatus)
+  ) {
+    throw new AppError(
+      'Signal cannot be rejected in its current state',
+      httpStatus.BAD_REQUEST
+    );
+  }
+
+  const updated = await Signal_Model.findByIdAndUpdate(
+    signalId,
+    {
+      workflowStatus: 'rejected',
+      status: 'canceled',
+      mtReview: {
+        confirmedAt: null,
+        confirmedBy: new Types.ObjectId(accountId),
+        rejectedAt: new Date(),
+        rejectionReason: rejectionReason || 'Rejected by Master Trader',
+      },
+    },
+    { new: true }
+  );
+
+  await safeAudit('signal_mt_rejected', accountId, 'signal', signalId, {
+    rejectionReason,
+  });
+
+  return updated;
+};
+
+const resubmit_ai_validation = async (accountId: string, signalId: string) => {
+  if (!Types.ObjectId.isValid(signalId)) {
+    throw new AppError('Invalid signal ID', httpStatus.BAD_REQUEST);
+  }
+
+  await assertMasterApproved(accountId);
+
+  const signal = await Signal_Model.findById(signalId);
+  if (!signal) {
+    throw new AppError('Signal not found', httpStatus.NOT_FOUND);
+  }
+
+  if (signal.authorId.toString() !== accountId) {
+    throw new AppError('Forbidden', httpStatus.FORBIDDEN);
+  }
+
+  if (
+    !signal.workflowStatus ||
+    !RESUBMIT_AI_WORKFLOW_STATUSES.includes(signal.workflowStatus)
+  ) {
+    throw new AppError('Signal cannot be resubmitted for AI validation', httpStatus.BAD_REQUEST);
+  }
+
+  await Signal_Model.findByIdAndUpdate(signalId, { workflowStatus: 'ai_pending' });
+  try {
+    return await runAiValidationForSignal(signalId, accountId);
+  } catch (err) {
+    await Signal_Model.findByIdAndUpdate(signalId, { workflowStatus: signal.workflowStatus });
+    throw err;
+  }
+};
+
+const ai_assist_signal = async (accountId: string, signalId: string) => {
+  if (!Types.ObjectId.isValid(signalId)) {
+    throw new AppError('Invalid signal ID', httpStatus.BAD_REQUEST);
+  }
+
+  await assertMasterApproved(accountId);
+
+  const signal = await Signal_Model.findById(signalId);
+  if (!signal) {
+    throw new AppError('Signal not found', httpStatus.NOT_FOUND);
+  }
+
+  if (signal.authorId.toString() !== accountId) {
+    throw new AppError('You can only request assist on your own signals', httpStatus.FORBIDDEN);
+  }
+
+  const result = await ai_services.assist_master_signal(signalToValidationInput(signal));
+
+  await safeAudit('signal_ai_assist', accountId, 'signal', signalId, {
+    model: result.model,
+  });
+
+  return result;
 };
 
 /**
@@ -324,9 +664,17 @@ const get_signals = async (
 
   apply_filters(query, filters);
 
-  // Default for general list: only show active signals if no status specified
-  if (!filters.status || filters.status === "") {
+  if (!filters.status || filters.status === '') {
     query.status = 'active';
+    const workflowFilter = {
+      $or: [{ workflowStatus: 'active' }, { workflowStatus: { $exists: false } }],
+    };
+    if (query.$or) {
+      query.$and = [{ $or: query.$or as unknown[] }, workflowFilter];
+      delete query.$or;
+    } else {
+      Object.assign(query, workflowFilter);
+    }
   }
 
   const signals = await Signal_Model.find(query)
@@ -348,19 +696,50 @@ const get_signals = async (
   };
 };
 
-const get_signal_by_id = async (signalId: string, includeUnpublished = false) => {
+const get_signal_by_id = async (
+  signalId: string,
+  includeUnpublished = false,
+  viewerAccountId?: string
+) => {
   if (!Types.ObjectId.isValid(signalId)) {
     throw new AppError('Invalid signal ID', httpStatus.BAD_REQUEST);
   }
 
-  const query: any = { _id: new Types.ObjectId(signalId) };
+  const query: Record<string, unknown> = { _id: new Types.ObjectId(signalId) };
   if (!includeUnpublished) {
     query.status = 'active';
+    query.$or = [
+      { workflowStatus: 'active' },
+      { workflowStatus: { $exists: false } },
+    ];
   }
 
   const signal = await Signal_Model.findOne(query).populate('authorId', 'name userProfileUrl');
   if (!signal) {
     throw new AppError('Signal not found', httpStatus.NOT_FOUND);
+  }
+
+  if (signal.isPremium && viewerAccountId) {
+    const viewer = await Account_Model.findById(viewerAccountId);
+    if (viewer && viewer.role !== 'ADMIN' && viewer.role !== 'MASTER') {
+      const tier = (viewer.subscriptionTier || 'free').toLowerCase();
+      const status = (viewer.subscriptionStatus || '').toLowerCase();
+      const hasAccess =
+        ['pro', 'master'].includes(tier) &&
+        ['active', 'trialing'].includes(status);
+
+      if (!hasAccess) {
+        throw new AppError(
+          'Upgrade to Pro to access premium signals',
+          httpStatus.FORBIDDEN
+        );
+      }
+    }
+  } else if (signal.isPremium && !viewerAccountId) {
+    throw new AppError(
+      'Authentication required to view premium signals',
+      httpStatus.UNAUTHORIZED
+    );
   }
 
   return signal;
@@ -506,6 +885,7 @@ const publish_scheduled_signals = async () => {
     status: 'scheduled',
     publishType: 'scheduled',
     scheduledAt: { $lte: now },
+    workflowStatus: { $in: ['active', null] },
   });
 
   if (signals.length === 0) {
@@ -572,6 +952,11 @@ export const signal_services = {
   get_signals,
   get_signal_by_id,
   get_my_signals,
+  get_review_queue,
+  confirm_signal,
+  reject_signal,
+  resubmit_ai_validation,
+  ai_assist_signal,
   publish_scheduled_signals,
   toggle_featured_signal,
   increment_view,

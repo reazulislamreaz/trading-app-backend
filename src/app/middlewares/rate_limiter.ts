@@ -63,6 +63,19 @@ export const checkoutLimiter = rateLimit({
  * Limits each authenticated user to 20 uploads per hour
  * Prevents storage abuse and excessive S3 costs
  */
+/**
+ * Rate limiter for AI endpoints (validation, assist)
+ */
+export const aiLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  message: 'AI request limit exceeded. Please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => (req.user?.userId as string) || req.ip || 'anonymous',
+  validate: { trustProxy: false },
+});
+
 export const fileUploadLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 20, // Limit each user to 20 uploads per hour
