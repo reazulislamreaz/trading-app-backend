@@ -3,6 +3,7 @@ import { Account_Model } from "../modules/auth/auth.schema";
 import { SubscriptionPlan_Model, DEFAULT_PLANS } from "../modules/subscription/subscription.plans";
 import { configs } from "../configs";
 import { stripeService } from "../modules/subscription/stripe.service";
+import { seedBadges } from "../modules/badge/badge.seed";
 
 /**
  * Seed admin user into the database
@@ -198,7 +199,8 @@ const runAllSeeds = async () => {
   try {
     await seedAdmin();
     await seedSubscriptionPlans();
-    
+    await seedBadges();
+
     // Try to sync with Stripe (will gracefully skip if Stripe not configured)
     await syncPlansWithStripe();
     
@@ -213,4 +215,4 @@ const runAllSeeds = async () => {
 };
 
 export default runAllSeeds;
-export { seedAdmin, seedSubscriptionPlans, seedDemoUsers, syncPlansWithStripe };
+export { seedAdmin, seedSubscriptionPlans, seedDemoUsers, syncPlansWithStripe, seedBadges };

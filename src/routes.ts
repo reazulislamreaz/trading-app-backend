@@ -17,6 +17,7 @@ import { referral_routes } from './app/modules/referral/referral.route';
 import { withdrawal_routes } from './app/modules/withdrawal/withdrawal.route';
 import { wallet_transaction_routes } from './app/modules/wallet_transaction/wallet_transaction.route';
 import { system_config_routes } from './app/modules/system_config/system_config.route';
+import badgeRouter from './app/modules/badge/badge.route';
 
 const appRouter = Router();
 
@@ -39,6 +40,7 @@ const moduleRoutes = [
 
     // Copy trading & journal modules
     { path: '/copied-trades', route: copiedTradeRouter },
+    { path: '/badges', route: badgeRouter },
 
     // Ranking & engagement modules
     { path: '/contributions', route: contributionRouter },

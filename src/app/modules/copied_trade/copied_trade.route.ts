@@ -34,6 +34,12 @@ copiedTradeRouter.get(
   copied_trade_controllers.get_trade_history
 );
 
+// Signals Dashboard (must be before /:id)
+copiedTradeRouter.get(
+  '/dashboard',
+  copied_trade_controllers.get_signals_dashboard
+);
+
 // Single trade detail
 copiedTradeRouter.get(
   '/:id',

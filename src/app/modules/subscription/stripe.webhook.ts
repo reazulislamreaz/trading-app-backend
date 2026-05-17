@@ -6,6 +6,7 @@ import { Payment_Model } from "./payment.schema";
 import { Account_Model } from "../auth/auth.schema";
 import { referral_services } from "../referral/referral.service";
 import { notification_services } from "../notification/notification.service";
+import { badge_services } from "../badge/badge.service";
 import logger from "../../configs/logger";
 
 // @ts-ignore - Stripe types issue with v22
@@ -220,6 +221,8 @@ async function handleCheckoutCompleted(session: any) {
       },
     });
 
+    void badge_services.evaluate_user_badges(accountId);
+
     logger.info(
       `✅ Subscription created for account: ${accountId}, plan: ${planId}`,
     );
@@ -410,6 +413,8 @@ async function handleSubscriptionUpdated(stripeSub: any) {
       subscriptionStatus: stripeSub.status,
       subscriptionExpiresAt: new Date(stripeSub.current_period_end * 1000),
     });
+
+    void badge_services.evaluate_user_badges(subscription.accountId.toString());
 
     logger.info(
       `🔄 Subscription updated: ${stripeSub.id}, status: ${stripeSub.status}`,

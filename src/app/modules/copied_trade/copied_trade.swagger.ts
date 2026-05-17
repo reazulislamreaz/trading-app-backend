@@ -58,6 +58,99 @@ export const copiedTradeSwaggerDocs = {
       },
     },
   },
+  '/api/v1/copied-trades/dashboard': {
+    get: {
+      tags: ['Copy Trades'],
+      summary: 'Get Signals Dashboard',
+      description:
+        'Aggregated trading dashboard for the authenticated user: win rate, total trades, P/L, top traded asset, wins/losses chart data, and trades by asset.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: 'timeframe',
+          in: 'query',
+          schema: { type: 'string', enum: ['week', 'month', 'all'], default: 'all' },
+          description: 'Filter completed trades by period (UTC)',
+        },
+      ],
+      responses: {
+        200: {
+          description: 'Signals dashboard data',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  message: { type: 'string', example: 'Signals dashboard retrieved' },
+                  data: {
+                    type: 'object',
+                    properties: {
+                      timeframe: { type: 'string', example: 'all' },
+                      summary: {
+                        type: 'object',
+                        properties: {
+                          winRate: { type: 'number', example: 72 },
+                          totalTrades: { type: 'integer', example: 128 },
+                          profitLoss: { type: 'number', example: 1250 },
+                          profitLossFormatted: { type: 'string', example: '+$1,250' },
+                          currency: { type: 'string', example: 'USD' },
+                          topTradedAsset: {
+                            type: 'object',
+                            nullable: true,
+                            properties: {
+                              symbol: { type: 'string', example: 'AAPL' },
+                              assetType: { type: 'string', example: 'stocks' },
+                              tradeCount: { type: 'integer', example: 24 },
+                            },
+                          },
+                        },
+                      },
+                      winsLosses: {
+                        type: 'object',
+                        properties: {
+                          wins: {
+                            type: 'object',
+                            properties: {
+                              count: { type: 'integer', example: 92 },
+                              percentage: { type: 'number', example: 72 },
+                            },
+                          },
+                          losses: {
+                            type: 'object',
+                            properties: {
+                              count: { type: 'integer', example: 36 },
+                              percentage: { type: 'number', example: 28 },
+                            },
+                          },
+                        },
+                      },
+                      tradesByAsset: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            symbol: { type: 'string' },
+                            assetType: { type: 'string' },
+                            total: { type: 'integer' },
+                            wins: { type: 'integer' },
+                            losses: { type: 'integer' },
+                            profitLoss: { type: 'number' },
+                            barColor: { type: 'string', enum: ['win', 'loss', 'neutral'] },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        401: { description: 'Unauthorized' },
+      },
+    },
+  },
   '/api/v1/copied-trades': {
     get: {
       tags: ['Copy Trades'],

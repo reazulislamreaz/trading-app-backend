@@ -9,7 +9,8 @@ export type NotificationType =
   | 'payment_failed'
   | 'system_announcement'
   | 'signal_copied'
-  | 'trade_result_logged';
+  | 'trade_result_logged'
+  | 'badge_earned';
 
 export interface INotification {
   accountId: Types.ObjectId;
@@ -36,6 +37,7 @@ const notificationSchema = new Schema<INotification>(
         'system_announcement',
         'signal_copied',
         'trade_result_logged',
+        'badge_earned',
       ],
       required: true,
     },

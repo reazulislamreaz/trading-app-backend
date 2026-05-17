@@ -5,6 +5,7 @@ import { Signal_Model } from '../signal/signal.schema';
 import { Account_Model } from '../auth/auth.schema';
 import { Master_Model } from '../master/master.schema';
 import { notification_services } from '../notification/notification.service';
+import { badge_services } from '../badge/badge.service';
 import { Types } from 'mongoose';
 
 interface TLogTrade {
@@ -27,6 +28,30 @@ interface TTradeFilters {
   startDate?: string;
   endDate?: string;
 }
+
+export type DashboardTimeframe = 'week' | 'month' | 'all';
+
+const getDashboardDateRange = (timeframe: DashboardTimeframe): { startDate: Date | null } => {
+  if (timeframe === 'all') return { startDate: null };
+
+  const now = new Date();
+  const startDate = new Date(now);
+  if (timeframe === 'week') {
+    startDate.setDate(startDate.getDate() - 7);
+  } else {
+    startDate.setDate(startDate.getDate() - 30);
+  }
+  return { startDate };
+};
+
+const formatProfitLoss = (amount: number): string => {
+  const rounded = Math.round(amount * 100) / 100;
+  const prefix = rounded >= 0 ? '+' : '-';
+  return `${prefix}$${Math.abs(rounded).toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })}`;
+};
 
 /**
  * Copy a signal — creates a pending trade record
@@ -143,6 +168,8 @@ const log_trade = async (userId: string, data: TLogTrade) => {
       resultPnl: data.resultPnl,
     },
   });
+
+  void badge_services.evaluate_user_badges(userId);
 
   return updated;
 };
@@ -424,6 +451,183 @@ const cancel_copy = async (userId: string, tradeId: string) => {
   return { message: 'Copy canceled' };
 };
 
+/**
+ * Signals Dashboard — aggregated stats for the authenticated user's trade journal.
+ * Uses completed copied trades joined with signal symbol/asset data.
+ */
+const get_signals_dashboard = async (
+  userId: string,
+  timeframe: DashboardTimeframe = 'all'
+) => {
+  const { startDate } = getDashboardDateRange(timeframe);
+
+  const matchStage: Record<string, unknown> = {
+    userId: new Types.ObjectId(userId),
+    status: 'completed',
+    loggedAt: { $ne: null },
+  };
+
+  if (startDate) {
+    matchStage.loggedAt = { $gte: startDate };
+  }
+
+  const signalCollection = Signal_Model.collection.name;
+
+  const [result] = await Copied_Trade_Model.aggregate([
+    { $match: matchStage },
+    {
+      $lookup: {
+        from: signalCollection,
+        localField: 'signalId',
+        foreignField: '_id',
+        as: 'signal',
+      },
+    },
+    { $unwind: '$signal' },
+    {
+      $facet: {
+        overview: [
+          {
+            $group: {
+              _id: null,
+              totalTrades: { $sum: 1 },
+              wins: { $sum: { $cond: [{ $eq: ['$outcome', 'win'] }, 1, 0] } },
+              losses: { $sum: { $cond: [{ $eq: ['$outcome', 'loss'] }, 1, 0] } },
+              breakevens: { $sum: { $cond: [{ $eq: ['$outcome', 'breakeven'] }, 1, 0] } },
+              profitLoss: { $sum: { $ifNull: ['$resultPnl', 0] } },
+            },
+          },
+        ],
+        bySymbol: [
+          {
+            $group: {
+              _id: {
+                symbol: '$signal.symbol',
+                assetType: '$signal.assetType',
+              },
+              total: { $sum: 1 },
+              wins: { $sum: { $cond: [{ $eq: ['$outcome', 'win'] }, 1, 0] } },
+              losses: { $sum: { $cond: [{ $eq: ['$outcome', 'loss'] }, 1, 0] } },
+              profitLoss: { $sum: { $ifNull: ['$resultPnl', 0] } },
+            },
+          },
+          { $sort: { total: -1 } },
+        ],
+        tradeBars: [
+          { $sort: { loggedAt: 1 } },
+          {
+            $project: {
+              _id: 0,
+              symbol: '$signal.symbol',
+              assetType: '$signal.assetType',
+              outcome: 1,
+              profitLoss: { $ifNull: ['$resultPnl', 0] },
+              loggedAt: 1,
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  const overview = result?.overview?.[0] ?? {
+    totalTrades: 0,
+    wins: 0,
+    losses: 0,
+    breakevens: 0,
+    profitLoss: 0,
+  };
+
+  const totalTrades = overview.totalTrades as number;
+  const wins = overview.wins as number;
+  const losses = overview.losses as number;
+  const breakevens = overview.breakevens as number;
+  const profitLoss = Math.round((overview.profitLoss as number) * 100) / 100;
+
+  const winLossDenominator = wins + losses;
+  const winRate =
+    winLossDenominator > 0
+      ? Math.round((wins / winLossDenominator) * 10000) / 100
+      : totalTrades > 0
+        ? Math.round((wins / totalTrades) * 10000) / 100
+        : 0;
+
+  const winsPercentage =
+    winLossDenominator > 0 ? Math.round((wins / winLossDenominator) * 10000) / 100 : 0;
+  const lossesPercentage =
+    winLossDenominator > 0 ? Math.round((losses / winLossDenominator) * 10000) / 100 : 0;
+
+  const bySymbol = (result?.bySymbol ?? []) as Array<{
+    _id: { symbol: string; assetType: string };
+    total: number;
+    wins: number;
+    losses: number;
+    profitLoss: number;
+  }>;
+
+  const topSymbol = bySymbol[0];
+
+  const tradesByAsset = bySymbol.map((row) => {
+    const roundedPnl = Math.round(row.profitLoss * 100) / 100;
+    let barColor: 'win' | 'loss' | 'neutral' = 'neutral';
+    if (row.wins > row.losses) barColor = 'win';
+    else if (row.losses > row.wins) barColor = 'loss';
+    else if (roundedPnl > 0) barColor = 'win';
+    else if (roundedPnl < 0) barColor = 'loss';
+
+    return {
+      symbol: row._id.symbol,
+      assetType: row._id.assetType,
+      total: row.total,
+      wins: row.wins,
+      losses: row.losses,
+      profitLoss: roundedPnl,
+      barColor,
+    };
+  });
+
+  const tradeBars = ((result?.tradeBars ?? []) as Array<{
+    symbol: string;
+    assetType: string;
+    outcome: TradeOutcome | null;
+    profitLoss: number;
+    loggedAt: Date;
+  }>).map((bar) => ({
+    symbol: bar.symbol,
+    assetType: bar.assetType,
+    outcome: bar.outcome,
+    profitLoss: Math.round(bar.profitLoss * 100) / 100,
+    barColor:
+      bar.outcome === 'win' ? 'win' : bar.outcome === 'loss' ? 'loss' : ('neutral' as const),
+    loggedAt: bar.loggedAt,
+  }));
+
+  return {
+    timeframe,
+    summary: {
+      winRate,
+      totalTrades,
+      profitLoss,
+      profitLossFormatted: formatProfitLoss(profitLoss),
+      currency: 'USD',
+      topTradedAsset: topSymbol
+        ? {
+            symbol: topSymbol._id.symbol,
+            assetType: topSymbol._id.assetType,
+            tradeCount: topSymbol.total,
+          }
+        : null,
+    },
+    winsLosses: {
+      wins: { count: wins, percentage: winsPercentage },
+      losses: { count: losses, percentage: lossesPercentage },
+      breakevens: { count: breakevens },
+    },
+    tradesByAsset,
+    tradeBars,
+  };
+};
+
 export const copied_trade_services = {
   copy_signal,
   log_trade,
@@ -433,4 +637,5 @@ export const copied_trade_services = {
   get_signal_copiers,
   get_master_copied_stats,
   cancel_copy,
+  get_signals_dashboard,
 };

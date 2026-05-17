@@ -16,6 +16,7 @@ import { contributionSwaggerDocs } from "./app/modules/contribution/contribution
 import { leaderboardSwaggerDocs } from "./app/modules/leaderboard/leaderboard.swagger";
 import { topTradersSwaggerDocs } from "./app/modules/top-traders/top_traders.swagger";
 import { copiedTradeSwaggerDocs } from "./app/modules/copied_trade/copied_trade.swagger";
+import { badgeSwaggerDocs } from "./app/modules/badge/badge.swagger";
 
 export const swaggerOptions = {
   definition: {
@@ -44,6 +45,7 @@ export const swaggerOptions = {
       ...leaderboardSwaggerDocs,
       ...topTradersSwaggerDocs,
       ...copiedTradeSwaggerDocs,
+      ...badgeSwaggerDocs,
     },
     servers:
       configs.env === "production"

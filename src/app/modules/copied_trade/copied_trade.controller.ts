@@ -114,6 +114,19 @@ const get_master_copied_stats = catchAsync(async (req: Request, res: Response) =
   });
 });
 
+const get_signals_dashboard = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user!.userId;
+  const timeframe = (req.query.timeframe as 'week' | 'month' | 'all') || 'all';
+  const result = await copied_trade_services.get_signals_dashboard(userId, timeframe);
+
+  manageResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Signals dashboard retrieved',
+    data: result,
+  });
+});
+
 export const copied_trade_controllers = {
   copy_signal,
   log_trade,
@@ -123,4 +136,5 @@ export const copied_trade_controllers = {
   cancel_copy,
   get_signal_copiers,
   get_master_copied_stats,
+  get_signals_dashboard,
 };

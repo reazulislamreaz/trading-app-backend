@@ -8,6 +8,7 @@ import runAllSeeds from "./app/utils/seed";
 import { scheduleSignalUsageReset } from "./app/utils/signal_usage_reset";
 import { scheduleExpiryNotifications } from "./app/utils/subscription_notifications";
 import { scheduleSignalPublish } from "./app/utils/signal_publish_scheduler";
+import { scheduleBadgeEvaluation } from "./app/utils/badge_evaluation_scheduler";
 
 async function main() {
     // Validate database URL
@@ -28,6 +29,7 @@ async function main() {
     scheduleSignalUsageReset();
     scheduleExpiryNotifications();
     scheduleSignalPublish();
+    scheduleBadgeEvaluation();
 
     const server = http.createServer(app);
 
