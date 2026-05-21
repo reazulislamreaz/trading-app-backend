@@ -1,6 +1,5 @@
 import "dotenv/config";
 
-// Validate required environment variables
 const requiredEnvVars = [
     'PORT',
     'NODE_ENV',
