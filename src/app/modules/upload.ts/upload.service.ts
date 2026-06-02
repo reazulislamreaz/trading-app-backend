@@ -1,4 +1,5 @@
 import { uploadToS3 } from "../../utils/s3";
+import { resolveUploadFolder } from "../../utils/media_types";
 import logger from "../../configs/logger";
 
 export const uploadSingleFile = async (file: Express.Multer.File): Promise<string> => {
@@ -15,7 +16,8 @@ export const uploadSingleFile = async (file: Express.Multer.File): Promise<strin
   }
 
   try {
-    const url = await uploadToS3(file);
+    const folder = resolveUploadFolder(file);
+    const url = await uploadToS3(file, folder);
     return url;
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -43,7 +45,8 @@ export const uploadMultipleFiles = async (files: Express.Multer.File[]): Promise
     const urls = await Promise.all(
       files.map(async (file) => {
         try {
-          return await uploadToS3(file);
+          const folder = resolveUploadFolder(file);
+          return await uploadToS3(file, folder);
         } catch (error: unknown) {
           const errorMessage = error instanceof Error ? error.message : "Unknown error";
           logger.error(`Failed to upload file ${file.originalname}: ${errorMessage}`, error);

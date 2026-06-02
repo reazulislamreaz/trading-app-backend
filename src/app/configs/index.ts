@@ -67,6 +67,10 @@ export const configs = {
         access_key_id: process.env.AWS_ACCESS_KEY_ID,
         secret_access_key: process.env.AWS_SECRET_ACCESS_KEY,
         bucket_name: process.env.AWS_BUCKET_NAME,
+        public_base_url: process.env.AWS_S3_PUBLIC_BASE_URL,
+    },
+    upload: {
+        storage: (process.env.UPLOAD_STORAGE || "auto").toLowerCase(),
     },
     cloudinary: {
         cloud_name: process.env.CLOUD_NAME,

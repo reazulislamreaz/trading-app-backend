@@ -1,7 +1,7 @@
-import catchAsync from '../../utils/catch_async';
-import manageResponse from '../../utils/manage_response';
-import { signal_services } from './signal.service';
-import httpStatus from 'http-status';
+import catchAsync from "../../utils/catch_async";
+import manageResponse from "../../utils/manage_response";
+import { signal_services } from "./signal.service";
+import httpStatus from "http-status";
 
 const create_signal = catchAsync(async (req, res) => {
   const accountId = req.user!.userId;
@@ -10,26 +10,33 @@ const create_signal = catchAsync(async (req, res) => {
   manageResponse(res, {
     success: true,
     statusCode: httpStatus.CREATED,
-    message: 'Signal created successfully',
+    message: "Signal created successfully",
     data: result,
   });
 });
 
 const update_signal = catchAsync(async (req, res) => {
   const accountId = req.user!.userId;
-  const result = await signal_services.update_signal(accountId, req.params.id as string, req.body);
+  const result = await signal_services.update_signal(
+    accountId,
+    req.params.id as string,
+    req.body,
+  );
 
   manageResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Signal updated successfully',
+    message: "Signal updated successfully",
     data: result,
   });
 });
 
 const delete_signal = catchAsync(async (req, res) => {
   const accountId = req.user!.userId;
-  const result = await signal_services.delete_signal(accountId, req.params.id as string);
+  const result = await signal_services.delete_signal(
+    accountId,
+    req.params.id as string,
+  );
 
   manageResponse(res, {
     success: true,
@@ -48,7 +55,8 @@ const get_all_signals = catchAsync(async (req, res) => {
   if (req.query.assetType) filters.assetType = req.query.assetType;
   if (req.query.signalType) filters.signalType = req.query.signalType;
   if (req.query.status) filters.status = req.query.status;
-  if (req.query.isPremium !== undefined) filters.isPremium = req.query.isPremium === 'true';
+  if (req.query.isPremium !== undefined)
+    filters.isPremium = req.query.isPremium === "true";
   if (req.query.authorId) filters.authorId = req.query.authorId as string;
 
   const result = await signal_services.get_signals(page, limit, filters);
@@ -56,7 +64,7 @@ const get_all_signals = catchAsync(async (req, res) => {
   manageResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Signals retrieved successfully',
+    message: "Signals retrieved successfully",
     data: result.data,
     meta: result.meta,
   });
@@ -67,13 +75,13 @@ const get_single_signal = catchAsync(async (req, res) => {
   const result = await signal_services.get_signal_by_id(
     req.params.id as string,
     false,
-    viewerAccountId
+    viewerAccountId,
   );
 
   manageResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Signal retrieved successfully',
+    message: "Signal retrieved successfully",
     data: result,
   });
 });
@@ -84,12 +92,18 @@ const get_my_signals = catchAsync(async (req, res) => {
   const limit = Number(req.query.limit) || 20;
   const { status, assetType, signalType, isPremium, search } = req.query;
 
-  const result = await signal_services.get_my_signals(accountId, page, limit, { status: status as string, assetType: assetType as string, signalType: signalType as string, isPremium: isPremium !== undefined ? isPremium === "true" : undefined, search: search as string });
+  const result = await signal_services.get_my_signals(accountId, page, limit, {
+    status: status as string,
+    assetType: assetType as string,
+    signalType: signalType as string,
+    isPremium: isPremium !== undefined ? isPremium === "true" : undefined,
+    search: search as string,
+  });
 
   manageResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'My signals retrieved successfully',
+    message: "My signals retrieved successfully",
     data: result.data,
     meta: result.meta,
   });
@@ -98,20 +112,23 @@ const get_my_signals = catchAsync(async (req, res) => {
 const toggle_featured = catchAsync(async (req, res) => {
   const result = await signal_services.toggle_featured_signal(
     req.params.id as string,
-    req.body.isFeatured
+    req.body.isFeatured,
   );
 
   manageResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: result.isFeatured ? 'Signal featured' : 'Signal unfeatured',
+    message: result.isFeatured ? "Signal featured" : "Signal unfeatured",
     data: result,
   });
 });
 
 const like_signal = catchAsync(async (req, res) => {
   const accountId = req.user!.userId;
-  const result = await signal_services.like_signal(accountId, req.params.id as string);
+  const result = await signal_services.like_signal(
+    accountId,
+    req.params.id as string,
+  );
 
   manageResponse(res, {
     success: true,
@@ -123,7 +140,10 @@ const like_signal = catchAsync(async (req, res) => {
 
 const unlike_signal = catchAsync(async (req, res) => {
   const accountId = req.user!.userId;
-  const result = await signal_services.unlike_signal(accountId, req.params.id as string);
+  const result = await signal_services.unlike_signal(
+    accountId,
+    req.params.id as string,
+  );
 
   manageResponse(res, {
     success: true,
@@ -135,7 +155,10 @@ const unlike_signal = catchAsync(async (req, res) => {
 
 const bookmark_signal = catchAsync(async (req, res) => {
   const accountId = req.user!.userId;
-  const result = await signal_services.bookmark_signal(accountId, req.params.id as string);
+  const result = await signal_services.bookmark_signal(
+    accountId,
+    req.params.id as string,
+  );
 
   manageResponse(res, {
     success: true,
@@ -147,7 +170,10 @@ const bookmark_signal = catchAsync(async (req, res) => {
 
 const unbookmark_signal = catchAsync(async (req, res) => {
   const accountId = req.user!.userId;
-  const result = await signal_services.unbookmark_signal(accountId, req.params.id as string);
+  const result = await signal_services.unbookmark_signal(
+    accountId,
+    req.params.id as string,
+  );
 
   manageResponse(res, {
     success: true,
@@ -159,7 +185,10 @@ const unbookmark_signal = catchAsync(async (req, res) => {
 
 const share_signal = catchAsync(async (req, res) => {
   const accountId = req.user!.userId;
-  const result = await signal_services.share_signal(accountId, req.params.id as string);
+  const result = await signal_services.share_signal(
+    accountId,
+    req.params.id as string,
+  );
 
   manageResponse(res, {
     success: true,
@@ -178,7 +207,7 @@ const get_review_queue = catchAsync(async (req, res) => {
   manageResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Review queue retrieved',
+    message: "Review queue retrieved",
     data: result.data,
     meta: result.meta,
   });
@@ -186,12 +215,15 @@ const get_review_queue = catchAsync(async (req, res) => {
 
 const confirm_signal = catchAsync(async (req, res) => {
   const accountId = req.user!.userId;
-  const result = await signal_services.confirm_signal(accountId, req.params.id as string);
+  const result = await signal_services.confirm_signal(
+    accountId,
+    req.params.id as string,
+  );
 
   manageResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Signal confirmed and published',
+    message: "Signal confirmed and published",
     data: result,
   });
 });
@@ -201,13 +233,13 @@ const reject_signal = catchAsync(async (req, res) => {
   const result = await signal_services.reject_signal(
     accountId,
     req.params.id as string,
-    req.body.rejectionReason
+    req.body.rejectionReason,
   );
 
   manageResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Signal rejected',
+    message: "Signal rejected",
     data: result,
   });
 });
@@ -216,25 +248,28 @@ const resubmit_ai_validation = catchAsync(async (req, res) => {
   const accountId = req.user!.userId;
   const result = await signal_services.resubmit_ai_validation(
     accountId,
-    req.params.id as string
+    req.params.id as string,
   );
 
   manageResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'Signal resubmitted for AI validation',
+    message: "Signal resubmitted for AI validation",
     data: result,
   });
 });
 
 const ai_assist_signal = catchAsync(async (req, res) => {
   const accountId = req.user!.userId;
-  const result = await signal_services.ai_assist_signal(accountId, req.params.id as string);
+  const result = await signal_services.ai_assist_signal(
+    accountId,
+    req.params.id as string,
+  );
 
   manageResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
-    message: 'AI assist generated',
+    message: "AI assist generated",
     data: result,
   });
 });

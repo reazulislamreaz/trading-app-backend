@@ -14,7 +14,6 @@ const trainingProgressSchema = new Schema<ITrainingProgress>(
       type: Schema.Types.ObjectId,
       ref: 'account',
       required: true,
-      unique: true,
     },
     lessonsCompleted: { type: [String], default: [] },
     quizScore: { type: Number, default: null },

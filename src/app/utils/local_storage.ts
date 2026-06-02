@@ -36,9 +36,10 @@ export const uploadToLocal = async (
   if (configs.env === "production") {
     baseUrl = configs.jwt.front_end_url || "";
   } else {
-    // Use network IP for development
-    const port = process.env.PORT || 5000;
-    baseUrl = `http://10.10.11.30:${port}`;
+    // In development, use the configured BACKEND_IP or default to localhost
+    const port = configs.port || 5000;
+    const host = configs.ip.backend_ip || "localhost";
+    baseUrl = `http://${host}:${port}`;
   }
   return `${baseUrl}/uploads/${folder}/${filename}`;
 };

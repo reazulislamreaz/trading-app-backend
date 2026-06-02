@@ -13,7 +13,7 @@ const handleMulterError = (err: Error, res: express.Response) => {
     if (multerErr.code === "LIMIT_FILE_SIZE") {
       return res.status(400).json({
         success: false,
-        message: "File size too large. Maximum size is 20MB",
+        message: "File size too large. Maximum size is 100MB",
       });
     }
     if (multerErr.code === "LIMIT_FILE_COUNT") {
@@ -29,10 +29,10 @@ const handleMulterError = (err: Error, res: express.Response) => {
       });
     }
   }
-  if (err.message === "Invalid file type") {
+  if (err.message?.startsWith("Invalid file type")) {
     return res.status(400).json({
       success: false,
-      message: "Invalid file type. Allowed: JPG, PNG, WebP, PDF, CSV",
+      message: err.message,
     });
   }
   return res.status(400).json({

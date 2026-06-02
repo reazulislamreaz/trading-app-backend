@@ -9,6 +9,7 @@ import { scheduleSignalUsageReset } from "./app/utils/signal_usage_reset";
 import { scheduleExpiryNotifications } from "./app/utils/subscription_notifications";
 import { scheduleSignalPublish } from "./app/utils/signal_publish_scheduler";
 import { scheduleBadgeEvaluation } from "./app/utils/badge_evaluation_scheduler";
+import { logUploadStorageConfig } from "./app/utils/s3";
 
 async function main() {
     // Validate database URL
@@ -31,10 +32,12 @@ async function main() {
     scheduleSignalPublish();
     scheduleBadgeEvaluation();
 
+    logUploadStorageConfig();
+
     const server = http.createServer(app);
 
-    // Set request timeout
-    server.timeout = 30000; // 30 seconds
+    // Set request timeout to 10 minutes for large file uploads
+    server.timeout = 600000; // 600,000 ms = 10 minutes
 
     // Use server.listen() instead of app.listen() so server.close() works for graceful shutdown
     // server.listen(Number(configs.port) || 3000, configs.ip.backend_ip as string, () => {

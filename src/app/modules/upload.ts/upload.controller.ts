@@ -33,9 +33,19 @@ export const uploadFile = async (req: Request, res: Response) => {
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    logger.error(`Upload failed: ${errorMessage}`, error);
+    
+    // Enhanced logging for debugging
+    logger.error("File upload failed", {
+      error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+      file: req.file ? req.file.originalname : "none",
+      filesCount: req.files ? (req.files as Express.Multer.File[]).length : 0,
+    });
 
-    const statusCode = errorMessage.includes("Invalid file type") ? 400 : 500;
+    const statusCode = errorMessage.includes("Invalid file type") || 
+                       errorMessage.includes("extension does not match") ||
+                       errorMessage.includes("too large")
+                       ? 400 : 500;
     const message =
       statusCode === 400
         ? errorMessage
