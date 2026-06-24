@@ -13,7 +13,7 @@ const handleMulterError = (err: Error, res: express.Response) => {
     if (multerErr.code === "LIMIT_FILE_SIZE") {
       return res.status(400).json({
         success: false,
-        message: "File size too large. Maximum size is 100MB",
+        message: "File size too large. Maximum size is 200MB",
       });
     }
     if (multerErr.code === "LIMIT_FILE_COUNT") {

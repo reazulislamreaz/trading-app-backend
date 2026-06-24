@@ -83,6 +83,7 @@ export const configs = {
     },
     ip: {
         backend_ip: process.env.BACKEND_IP,
+        backend_url: process.env.BACKEND_URL,
     },
     seed: {
         admin_email: process.env.ADMIN_EMAIL,

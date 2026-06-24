@@ -12,9 +12,27 @@ const extensionContentTypes: Record<string, string> = {
   ".avi": "video/x-msvideo",
   ".mkv": "video/x-matroska",
   ".webm": "video/webm",
+  ".m4v": "video/mp4",
+  ".mpeg": "video/mpeg",
+  ".mpg": "video/mpeg",
+  ".3gp": "video/3gpp",
+  ".ogv": "video/ogg",
+  ".ogg": "video/ogg",
 };
 
-const videoExtensions = new Set([".mp4", ".mov", ".avi", ".mkv", ".webm"]);
+const videoExtensions = new Set([
+  ".mp4",
+  ".mov",
+  ".avi",
+  ".mkv",
+  ".webm",
+  ".m4v",
+  ".mpeg",
+  ".mpg",
+  ".3gp",
+  ".ogv",
+  ".ogg",
+]);
 const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp"]);
 
 export function resolveContentType(file: Express.Multer.File): string {

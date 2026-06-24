@@ -34,7 +34,8 @@ export const uploadToLocal = async (
   let baseUrl: string;
 
   if (configs.env === "production") {
-    baseUrl = configs.jwt.front_end_url || "";
+    // In production, use BACKEND_URL if provided, otherwise fallback to frontend URL (less ideal)
+    baseUrl = configs.ip.backend_url || configs.jwt.front_end_url || "";
   } else {
     // In development, use the configured BACKEND_IP or default to localhost
     const port = configs.port || 5000;

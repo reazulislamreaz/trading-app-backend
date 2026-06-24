@@ -69,15 +69,10 @@ export const uploader = multer({
     const ext = path.extname(file.originalname).toLowerCase();
     const mimetype = file.mimetype;
 
-    // 1. Relaxed check for videos: if it's a known video extension, allow any video/ mimetype
+    // 1. Relaxed check for videos: if it's a known video extension, allow it
+    // Videos often have inconsistent mimetypes across browsers/platforms
     if (videoExtensions.includes(ext)) {
-      if (
-        mimetype.startsWith("video/") ||
-        mimetype === "application/octet-stream" ||
-        !mimetype
-      ) {
-        return cb(null, true);
-      }
+      return cb(null, true);
     }
 
     // 2. Strict check for other types or if first check failed
